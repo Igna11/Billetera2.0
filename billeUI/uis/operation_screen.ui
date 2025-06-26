@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>897</width>
+    <height>836</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="windowOpacity">
+   <double>1.000000000000000</double>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QWidget" name="MainVWidget" native="true">
+      <property name="styleSheet">
+       <string notr="true"/>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <layout class="QVBoxLayout" name="MainVLayout" stretch="0,0,0,0,1,0">
+         <property name="spacing">
+          <number>5</number>
+         </property>
+         <item>
+          <spacer name="Upper_verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="Title_HLayout">
+           <item>
+            <widget class="QLabel" name="title_label">
+             <property name="text">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:20pt; font-weight:600; color:#8f8f8f;&quot;&gt;BilleterApp&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="welcome_hLayout">
+           <item>
+            <spacer name="horizontalSpacer_5">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QLabel" name="username_label">
+             <property name="lineWidth">
+              <number>1</number>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QFrame" name="frame_2">
+           <property name="frameShape">
+            <enum>QFrame::HLine</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="Central_HLayout" stretch="1,1,5">
+           <item>
+            <layout class="QVBoxLayout" name="central_VL_Layout" stretch="0,0,0,0,0,0,0,0">
+             <item>
+              <spacer name="verticalSpacer">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="income_HLayout">
+               <item>
+                <widget class="QPushButton" name="income_button">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border-radius: 10px;
+    border: 1px solid rgb(172, 198, 181);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(134, 222, 140), stop:1 rgb(36, 175, 67));
+    color: white;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(108, 202, 114), stop:1 rgb(14, 136, 36));
+}
+
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(18, 99, 10), stop:1 rgb(5, 72, 2));
+}
+
+QPushButton:disabled {
+    background-color: rgb(212, 212, 212);
+    color: rgb(128, 128, 128);
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string>Income</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="expense_HLayout">
+               <item>
+                <widget class="QPushButton" name="expense_button">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="focusPolicy">
+                  <enum>Qt::StrongFocus</enum>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border-radius: 10px;
+    border: 1px solid rgb(206, 94, 94);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(255, 128, 128), stop:1 rgb(206, 85, 85));
+    color: white;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(255, 97, 97), stop:1 rgb(206, 76, 76));
+}
+
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(173, 62, 62), stop:1 rgb(139, 46, 46));
+}
+
+QPushButton:disabled {
+    background-color: rgb(212, 212, 212);
+    color: rgb(128, 128, 128);
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string>Expense</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="transfer_HLayout">
+               <item>
+                <widget class="QPushButton" name="transfer_button">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border-radius: 10px;
+    border: 1px solid rgb(73, 128, 180);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(141, 186, 225), stop:1 rgb(101, 148, 195));
+    color: white;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(91, 155, 221), stop:1 rgb(51, 117, 178));
+}
+
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(51, 91, 131), stop:1 rgb(21, 64, 111));
+}
+
+QPushButton:disabled {
+    background-color: rgb(212, 212, 212);
+    color: rgb(128, 128, 128);
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string>Transfer</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="readjustment_HLayout">
+               <item>
+                <widget class="QPushButton" name="readjustment_button">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border-radius: 10px;
+    border: 1px solid rgb(172, 198, 181);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(224, 253, 249), stop:1 rgb(181, 239, 228));
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(221, 255, 233), stop:1 rgb(179, 247, 214));
+}
+
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(139, 188, 182), stop:1 rgb(100, 151, 145));
+}
+
+QPushButton:disabled {
+    background-color: rgb(212, 212, 212);
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string>Readjustment</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="createaccount_HLayout">
+               <item>
+                <widget class="QPushButton" name="create_new_account_button">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border-radius: 10px;
+    border: 1px solid rgb(172, 198, 181);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(224, 253, 249), stop:1 rgb(181, 239, 228));
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(221, 255, 233), stop:1 rgb(179, 247, 214));
+}
+
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(139, 188, 182), stop:1 rgb(100, 151, 145));
+}
+
+QPushButton:disabled {
+    background-color: rgb(212, 212, 212);
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string>Create new account</string>
+                 </property>
+                 <property name="autoDefault">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
+               <item>
+                <widget class="QPushButton" name="delete_account_button">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>25</height>
+                  </size>
+                 </property>
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border-radius: 10px;
+    border: 1px solid rgb(172, 198, 181);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(224, 253, 249), stop:1 rgb(181, 239, 228));
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(221, 255, 233), stop:1 rgb(179, 247, 214));
+}
+
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(139, 188, 182), stop:1 rgb(100, 151, 145));
+}
+
+QPushButton:disabled {
+    background-color: rgb(212, 212, 212);
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string>Delete account</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_4">
+               <item>
+                <widget class="QPushButton" name="browse_account_button">
+                 <property name="minimumSize">
+                  <size>
+                   <width>200</width>
+                   <height>25</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border-radius: 10px;
+    border: 1px solid rgb(172, 198, 181);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(224, 253, 249), stop:1 rgb(181, 239, 228));
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(221, 255, 233), stop:1 rgb(179, 247, 214));
+}
+
+QPushButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(139, 188, 182), stop:1 rgb(100, 151, 145));
+}
+
+QPushButton:disabled {
+    background-color: rgb(212, 212, 212);
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string>Browse operations</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QFrame" name="frame">
+             <property name="frameShape">
+              <enum>QFrame::VLine</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="central_VR_Layout">
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1,1,0,0,0,0,0">
+               <item>
+                <spacer name="horizontalSpacer">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QPushButton" name="previous_month_button">
+                 <property name="maximumSize">
+                  <size>
+                   <width>30</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>&lt;&lt;</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="next_month_button">
+                 <property name="maximumSize">
+                  <size>
+                   <width>30</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>&gt;&gt;</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="custom_period_button">
+                 <property name="text">
+                  <string>Custom</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="reset_month_button">
+                 <property name="text">
+                  <string>Reset</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="switch_type_button">
+                 <property name="text">
+                  <string>Switch</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="currency_combobox">
+                 <property name="maximumSize">
+                  <size>
+                   <width>50</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_3">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="backbutton_hLayout">
+           <item>
+            <spacer name="backbutton_HLSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="back_button">
+             <property name="text">
+              <string>Back</string>
+             </property>
+             <property name="autoDefault">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="backbutton_HRSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>897</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
