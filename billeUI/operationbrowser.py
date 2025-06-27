@@ -20,7 +20,7 @@ from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery, Li
 
 from src.ophandlers.operationhandler import OperationHandler
 
-from billeUI import operationscreen
+from billeUI import operationscreen, currency_format
 from billeUI import UISPATH
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
@@ -82,30 +82,20 @@ class OperationBrowser(QMainWindow):
             "Subcategory",
             "Description",
         ]
-        # headers_list_debug = [
-        #    "Date & Time",
-        #    "cml",
-        #    "Amount",
-        #    "Operation Type",
-        #    "Category",
-        #    "Subcategory",
-        #    "Description",
-        # ]
         column_widths = [135, 100, 90, 90, 100, 130, 900]
         self.operation_table_widget.setRowCount(len(operations_list))
         self.operation_table_widget.setColumnCount(len(headers_list))
-        # self.operation_table_widget.setColumnCount(len(headers_list_debug))
         self.operation_table_widget.setHorizontalHeaderLabels(headers_list)
-        # self.operation_table_widget.setHorizontalHeaderLabels(headers_list_debug)
 
-        self.total_label.setText(f"<b>Total: ${operations_list[0].cumulative_amount:,.2f}</b>")
+        cumulative_amount = currency_format(operations_list[0].cumulative_amount)
+        self.total_label.setText(f"<b>Total: ${cumulative_amount}</b>")
         tablerow = 0
         for row_index, operation in enumerate(operations_list):
             # arrow = "\u2197" if operation.operation_type == "income" or operation.operation_type == "transfer_in" else "\u2198"
             items = [
                 QtWidgets.QTableWidgetItem(operation.operation_datetime.strftime(DATEFORMAT)),
-                QtWidgets.QTableWidgetItem(f"{operation.cumulative_amount:.2f}"),
-                QtWidgets.QTableWidgetItem(f"{operation.amount:.2f}"),
+                QtWidgets.QTableWidgetItem(f"{currency_format(operation.cumulative_amount)}"),
+                QtWidgets.QTableWidgetItem(f"{currency_format(operation.amount)}"),
                 QtWidgets.QTableWidgetItem(operation.operation_type),
                 QtWidgets.QTableWidgetItem(operation.category),
                 QtWidgets.QTableWidgetItem(operation.subcategory),
@@ -159,8 +149,8 @@ class OperationBrowser(QMainWindow):
                 "operation_datetime": datetime.strptime(
                     self.operation_table_widget.item(row_idx, 0).text() + "+00:00", DATEFORMAT + "%z"
                 ),
-                "cumulative_amount": Decimal(self.operation_table_widget.item(row_idx, 1).text()),
-                "amount": Decimal(self.operation_table_widget.item(row_idx, 2).text()),
+                "cumulative_amount": Decimal(currency_format(self.operation_table_widget.item(row_idx, 1).text(), to_numeric=True)),
+                "amount": Decimal(currency_format(self.operation_table_widget.item(row_idx, 2).text(), to_numeric=True)),
                 "operation_type": self.operation_table_widget.item(row_idx, 3).text(),
                 "category": self.operation_table_widget.item(row_idx, 4).text(),
                 "subcategory": self.operation_table_widget.item(row_idx, 5).text(),

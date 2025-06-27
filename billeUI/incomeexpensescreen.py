@@ -21,7 +21,7 @@ from src.ophandlers.transferhandler import TransferHandler
 from src.ophandlers.deletehandler import DeletionHandler
 
 from billeUI import operationscreen
-from billeUI import UISPATH
+from billeUI import UISPATH, currency_format
 
 
 class IncomeExpenseScreen(QMainWindow):
@@ -85,7 +85,7 @@ class IncomeExpenseScreen(QMainWindow):
         self.index = i
         self.acc_name = self.acc_list[self.index]
         self.acc_currency = self.acc_list_currencies[self.index]
-        account_total = list_acc_objects[self.index].account_total
+        account_total = currency_format(list_acc_objects[self.index].account_total)
         self.total_label.setText(f"Total: {account_total}")
 
     def save(self) -> None:

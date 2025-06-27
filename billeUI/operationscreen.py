@@ -6,6 +6,7 @@ updated on 21/06/2026
 """
 import os
 from typing import List
+from decimal import Decimal
 from datetime import datetime, timedelta
 
 from PyQt5 import QtCore

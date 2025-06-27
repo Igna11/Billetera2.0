@@ -7,6 +7,8 @@ updated on 06/2025
 from datetime import datetime, UTC
 from typing import List, Tuple, Dict
 
+from billeUI import currency_format
+
 from PyQt5 import QtChart
 from PyQt5.QtGui import QFont
 
@@ -134,7 +136,7 @@ class CategoricalPieChart(QtChart.QChart):
                     )
                     slice_inner.hovered.connect(lambda is_hovered, slice_=slice_inner: slice_.setExploded(is_hovered))
                     slice_inner.setExplodeDistanceFactor(0.05)
-                    label = f"<p align='center' style='color:black'>{subgroup['subcategory']}<br><b>${subgroup['total']:.2f}</b></p>"
+                    label = f"<p align='center' style='color:black'>{subgroup['subcategory']}<br><b>${currency_format(subgroup['total'])}</b></p>"
                     slice_inner.setLabel(label)
                     slice_inner.setLabelFont(font)
                     self.series_inner.append(slice_inner)
@@ -154,7 +156,7 @@ class CategoricalPieChart(QtChart.QChart):
             slice_lbl = pie_slice.label()
             slice_val = pie_slice.value()
             pie_slice.setLabelFont(font)
-            label = f"<p align='center' style='color:black'>{slice_lbl}<br><b>${slice_val:,.2f}</b></p>"
+            label = f"<p align='center' style='color:black'>{slice_lbl}<br><b>${currency_format(slice_val)}</b></p>"
             if pie_slice.percentage() > 0.05:
                 pie_slice.setLabelVisible()
             elif pie_slice.percentage() <= 0.05:
@@ -208,7 +210,7 @@ class CategoricalPieChart(QtChart.QChart):
                 currency=currency,
             )
         title_type = chart_type.capitalize()
-        total_int = f"{total:,.0f}"
+        total_int = f"{total:,.0f}".replace(",",".")
         total_decimal = f"{total:.2f}".split(".")[1]
         title = f"<h3><p align='center' style='color:black'><b>{title_type}: ${total_int}<sup>{total_decimal}</sup><br>{selected_period}</b></p>"
         self.setTitle(title)

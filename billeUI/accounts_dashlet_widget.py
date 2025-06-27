@@ -13,7 +13,7 @@ from PyQt5.uic import loadUi
 
 from src.models.accmodel import UserAccounts
 
-from billeUI import UISPATH
+from billeUI import UISPATH, currency_format
 
 
 class AccountDashletWidget(QWidget):
@@ -43,8 +43,8 @@ class AccountDashletWidget(QWidget):
         else:
             account_name = self.acc_list[self.acc_index].model_dump()["account_name"]
             account_currency = self.acc_list[self.acc_index].model_dump()["account_currency"]
-            account_total = f"Total: <b>{self.acc_list[self.acc_index].model_dump()['account_total']:,.2f}</b>"
-            user_total = f"Total: <b>{self._calculate_total():,.2f} ({account_currency})</b>"
+            account_total = f"Total: <b>{currency_format(self.acc_list[self.acc_index].model_dump()['account_total'])}</b>"
+            user_total = f"Total: <b>{currency_format(self._calculate_total())} ({account_currency})</b>"
             self.acc_label.setText(f"{account_name} ({account_currency})")
             self.total_label.setText(account_total)
             self.acc_total_label.setText(user_total)
