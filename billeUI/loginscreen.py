@@ -16,7 +16,6 @@ from src.pwhandler.pwhandler import UnauthorizedError
 from src.queries.usrqueries import GetUserByEmailQuery
 
 from billeUI import UISPATH
-from billeUI import users_gui
 from billeUI import welcomescreen
 from billeUI import operationscreen
 

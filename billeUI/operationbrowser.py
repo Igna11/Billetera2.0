@@ -23,7 +23,7 @@ from src.ophandlers.operationhandler import OperationHandler
 from billeUI import operationscreen
 from billeUI import UISPATH
 
-DATEFORMAT = "%d-%m-%Y %H:%M:%S"
+DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
 
 
 class OperationBrowser(QMainWindow):
@@ -91,7 +91,7 @@ class OperationBrowser(QMainWindow):
         #    "Subcategory",
         #    "Description",
         # ]
-        column_widths = [125, 100, 90, 90, 100, 130, 900]
+        column_widths = [135, 100, 90, 90, 100, 130, 900]
         self.operation_table_widget.setRowCount(len(operations_list))
         self.operation_table_widget.setColumnCount(len(headers_list))
         # self.operation_table_widget.setColumnCount(len(headers_list_debug))
@@ -138,7 +138,7 @@ class OperationBrowser(QMainWindow):
         new_value = item.text()
         self.rows_changed.add(row)
         self.save_changes_button.setEnabled(True)
-        print(f"{self.rows_changed=}")
+        self.status_label.setText(f"<font color='orange'>Changes to be saved.</font>")
 
     def save_updated_row(self):
         """Get all the new data in a row"""
@@ -166,6 +166,7 @@ class OperationBrowser(QMainWindow):
                 "subcategory": self.operation_table_widget.item(row_idx, 5).text(),
                 "description": self.operation_table_widget.item(row_idx, 6).text(),
             }
+
             edited_op = OperationHandler(**row_data)
             edited_op.set_account_total(edit_flag=True, original_operation=original_op)
             try:

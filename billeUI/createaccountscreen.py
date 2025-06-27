@@ -13,8 +13,6 @@ from src.models.accmodel import UserAccounts
 from src.commands.acccommands import CreateUsersAccountCommand, AccountAlreadyExistsError
 
 from billeUI import UISPATH
-from billeUI import users_gui
-from billeUI import accounts_gui
 from billeUI import operationscreen
 
 
