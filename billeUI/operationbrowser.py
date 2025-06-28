@@ -86,41 +86,46 @@ class OperationBrowser(QMainWindow):
         self.operation_table_widget.setRowCount(len(operations_list))
         self.operation_table_widget.setColumnCount(len(headers_list))
         self.operation_table_widget.setHorizontalHeaderLabels(headers_list)
+        self.total_label.setText(f"<b>Total: Empty</b>")
 
-        cumulative_amount = currency_format(operations_list[0].cumulative_amount)
-        self.total_label.setText(f"<b>Total: ${cumulative_amount}</b>")
-        tablerow = 0
-        for row_index, operation in enumerate(operations_list):
-            # arrow = "\u2197" if operation.operation_type == "income" or operation.operation_type == "transfer_in" else "\u2198"
-            items = [
-                QtWidgets.QTableWidgetItem(operation.operation_datetime.strftime(DATEFORMAT)),
-                QtWidgets.QTableWidgetItem(f"{currency_format(operation.cumulative_amount)}"),
-                QtWidgets.QTableWidgetItem(f"{currency_format(operation.amount)}"),
-                QtWidgets.QTableWidgetItem(operation.operation_type),
-                QtWidgets.QTableWidgetItem(operation.category),
-                QtWidgets.QTableWidgetItem(operation.subcategory),
-                QtWidgets.QTableWidgetItem(operation.description),
-            ]
-            items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
-            items[0].setData(QtCore.Qt.UserRole + 1, acc_id)
-            if operation.operation_type == "income":
-                background_color = QColor(200, 255, 200)
-            elif operation.operation_type == "transfer_in":
-                background_color = QColor(190, 235, 255)
-            elif operation.operation_type == "expense":
-                background_color = QColor(255, 200, 200)
-            elif operation.operation_type == "transfer_out":
-                background_color = QColor(255, 230, 180)
-            else:
-                background_color = QColor(255, 255, 255)
+        if operations_list:
+            cumulative_amount = currency_format(operations_list[0].cumulative_amount)
+            self.total_label.setText(f"<b>Total: ${cumulative_amount}</b>")
+            tablerow = 0
+            for row_index, operation in enumerate(operations_list):
+                # arrow = "\u2197" if operation.operation_type == "income" or operation.operation_type == "transfer_in" else "\u2198"
+                items = [
+                    QtWidgets.QTableWidgetItem(operation.operation_datetime.strftime(DATEFORMAT)),
+                    QtWidgets.QTableWidgetItem(f"{currency_format(operation.cumulative_amount)}"),
+                    QtWidgets.QTableWidgetItem(f"{currency_format(operation.amount)}"),
+                    QtWidgets.QTableWidgetItem(operation.operation_type),
+                    QtWidgets.QTableWidgetItem(operation.category),
+                    QtWidgets.QTableWidgetItem(operation.subcategory),
+                    QtWidgets.QTableWidgetItem(operation.description),
+                ]
+                # save the account_id and operation_id to be retrieved later
+                items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
+                items[0].setData(QtCore.Qt.UserRole + 1, acc_id)
 
-            for column_index, item in enumerate(items):
-                item.setBackground(background_color)
-                item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
-                self.operation_table_widget.setItem(row_index, column_index, item)
-                self.operation_table_widget.setColumnWidth(column_index, column_widths[column_index])
-        # Reconnect the signal for the table
-        self.operation_table_widget.blockSignals(False)
+                # colors
+                if operation.operation_type == "income":
+                    background_color = QColor(200, 255, 200)
+                elif operation.operation_type == "transfer_in":
+                    background_color = QColor(190, 235, 255)
+                elif operation.operation_type == "expense":
+                    background_color = QColor(255, 200, 200)
+                elif operation.operation_type == "transfer_out":
+                    background_color = QColor(255, 230, 180)
+                else:
+                    background_color = QColor(255, 255, 255)
+
+                for column_index, item in enumerate(items):
+                    item.setBackground(background_color)
+                    item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+                    self.operation_table_widget.setItem(row_index, column_index, item)
+                    self.operation_table_widget.setColumnWidth(column_index, column_widths[column_index])
+            # Reconnect the signal for the table
+            self.operation_table_widget.blockSignals(False)
 
     def cell_change(self, row, column):
         """detects when a cell in a row has a change"""
@@ -149,8 +154,12 @@ class OperationBrowser(QMainWindow):
                 "operation_datetime": datetime.strptime(
                     self.operation_table_widget.item(row_idx, 0).text() + "+00:00", DATEFORMAT + "%z"
                 ),
-                "cumulative_amount": Decimal(currency_format(self.operation_table_widget.item(row_idx, 1).text(), to_numeric=True)),
-                "amount": Decimal(currency_format(self.operation_table_widget.item(row_idx, 2).text(), to_numeric=True)),
+                "cumulative_amount": Decimal(
+                    currency_format(self.operation_table_widget.item(row_idx, 1).text(), to_numeric=True)
+                ),
+                "amount": Decimal(
+                    currency_format(self.operation_table_widget.item(row_idx, 2).text(), to_numeric=True)
+                ),
                 "operation_type": self.operation_table_widget.item(row_idx, 3).text(),
                 "category": self.operation_table_widget.item(row_idx, 4).text(),
                 "subcategory": self.operation_table_widget.item(row_idx, 5).text(),

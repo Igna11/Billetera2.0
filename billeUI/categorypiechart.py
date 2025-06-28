@@ -210,7 +210,7 @@ class CategoricalPieChart(QtChart.QChart):
                 currency=currency,
             )
         title_type = chart_type.capitalize()
-        total_int = f"{total:,.0f}".replace(",",".")
+        total_int = f"{total:,.0f}".replace(",", ".")
         total_decimal = f"{total:.2f}".split(".")[1]
         title = f"<h3><p align='center' style='color:black'><b>{title_type}: ${total_int}<sup>{total_decimal}</sup><br>{selected_period}</b></p>"
         self.setTitle(title)

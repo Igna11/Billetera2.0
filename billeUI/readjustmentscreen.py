@@ -32,8 +32,7 @@ class ReadjustmentScreen(QMainWindow):
         self.acc_name = None
         self.acc_currency = None
         self.operation_flag = operation_flag
-        self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
-        self.acc_names_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.acc_object_list]
+        self.set_account_info()
         self.accounts_comboBox.addItems(self.acc_names_list)
         self.set_acc_data(self.accounts_comboBox.currentIndex())
         self.accounts_comboBox.currentIndexChanged.connect(self.set_acc_data)
@@ -41,6 +40,15 @@ class ReadjustmentScreen(QMainWindow):
         self.cancel_button.clicked.connect(self.cancel)
         self.more_radio_button.clicked.connect(self.more_button)
         self._reset_more_data()
+
+    def set_account_info(self) -> None:
+        """Sets the account objects, names y currencies"""
+        acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        self.acc_object_list = [acc for acc in acc_object_list if acc.account_total]
+        self.acc_currency = [acc.account_currency for acc in self.acc_object_list]
+        self.acc_names_list = [
+            f"{acc.account_name} ({acc.account_currency})" for acc in self.acc_object_list
+        ]
 
     def _reset_more_data(self) -> None:
         """Reset the data from the toggle more"""
@@ -63,9 +71,8 @@ class ReadjustmentScreen(QMainWindow):
 
     def set_acc_data(self, i: int):
         """Sets the values of acc_name, acc_currency and the value of total label."""
-        self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        self.acc_object_list = [acc for acc in ListAccountsQuery(user_id=self.widget.user_object.user_id).execute() if acc.account_total]
         self.acc_name = self.acc_names_list[i]
-        self.acc_currency = self.acc_object_list[i].account_currency
         self.account_id = self.acc_object_list[i].account_id
         account_total = self.acc_object_list[i].account_total
         self.total_label.setText(f"Total: {account_total}")
@@ -98,11 +105,6 @@ class ReadjustmentScreen(QMainWindow):
                 cml = readjustment.readjustment(account_total=value)
                 readjustment.create_operations(cml)
                 self.status_label.setText(f"<font color='green'>Operation successfull</font>")
-                print(
-                    self.acc_name,
-                    self.acc_currency,
-                    value,
-                )
             except ValueError as e:
                 self.status_label.setText(f"<font color='red'>Invalid value.</font>")
                 print(f"{e}=")

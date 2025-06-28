@@ -5,8 +5,11 @@ from src import BASEPATH
 
 UISPATH = os.path.join(BASEPATH, "billeUI", "uis")
 
+
 def currency_format(value: str | float | Decimal, to_numeric: bool = False) -> str:
+    if value == None:
+        return None
     if not to_numeric:
-        return f"{value:,.2f}".replace(".","x").replace(",",".").replace("x",",")
+        return f"{value:,.2f}".replace(".", "x").replace(",", ".").replace("x", ",")
     elif isinstance(value, str):
-        return value.replace(".","").replace(",",".")
+        return value.replace(".", "").replace(",", ".")

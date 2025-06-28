@@ -85,6 +85,7 @@ class IncomeExpenseScreen(QMainWindow):
         self.index = i
         self.acc_name = self.acc_list[self.index]
         self.acc_currency = self.acc_list_currencies[self.index]
+        print(list_acc_objects[self.index].account_total)
         account_total = currency_format(list_acc_objects[self.index].account_total)
         self.total_label.setText(f"Total: {account_total}")
 

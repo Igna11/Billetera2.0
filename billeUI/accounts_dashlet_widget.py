@@ -33,7 +33,8 @@ class AccountDashletWidget(QWidget):
     def _calculate_total(self) -> Decimal:
         total = Decimal(0)
         for account in self.acc_list:
-            total += Decimal(account.account_total)
+            if account.account_total:
+                total += Decimal(account.account_total)
         return total
 
     def set_labels(self):
@@ -43,7 +44,9 @@ class AccountDashletWidget(QWidget):
         else:
             account_name = self.acc_list[self.acc_index].model_dump()["account_name"]
             account_currency = self.acc_list[self.acc_index].model_dump()["account_currency"]
-            account_total = f"Total: <b>{currency_format(self.acc_list[self.acc_index].model_dump()['account_total'])}</b>"
+            account_total = (
+                f"Total: <b>{currency_format(self.acc_list[self.acc_index].model_dump()['account_total'])}</b>"
+            )
             user_total = f"Total: <b>{currency_format(self._calculate_total())} ({account_currency})</b>"
             self.acc_label.setText(f"{account_name} ({account_currency})")
             self.total_label.setText(account_total)
