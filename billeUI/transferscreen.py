@@ -71,15 +71,15 @@ class TransferScreen(QMainWindow):
         self.all_button.setStyleSheet(
             """
             QToolButton {
+                padding: 0px;
                 border: none;
                 color: #007bff;
-                padding: 0px;
-                background: transparent;
                 font-weight: bold;
+                background: transparent;
             }
             QToolButton:hover {
-                text-decoration: underline;
                 color: #0056b3;
+                text-decoration: underline;
             }
         """
         )
@@ -145,12 +145,10 @@ class TransferScreen(QMainWindow):
             # Display the new totals
             self.set_origin_acc_data(self.accounts_origin_comboBox.currentIndex())
             self.set_dest_acc_data(self.accounts_dest_comboBox.currentIndex())
-            print("trasnfer successfull")
         except InvalidOperation:  # Decimal error
             self.status_label.setText("<font color='red'>Amount to transfer can not be null.</font>")
         except ValueError as e:
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
-            print(f"{e=}")
         except SameAccountError:
             self.status_label.setText("<font color='red'>Origin and destination accounts can't be the same.</font>")
         except DifferentCurrencyTransferError:

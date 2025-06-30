@@ -36,7 +36,6 @@ class CreateAccount(QMainWindow):
         """Creates the .txt file tha thold data' account."""
         acc_name = self.acc_name_line.text()
         acc_currency = self.currency_comboBox.currentText()
-        print(f"{acc_name}: {acc_currency}")
         try:
             UserAccounts.create_acc_list_table(user_id=self.widget.user_object.user_id)
             account = CreateUsersAccountCommand(
@@ -47,8 +46,6 @@ class CreateAccount(QMainWindow):
             )
         except ValueError as e:
             self.create_account_label.setText(f"<font color='red'>Invalid currency'</b>.</font>")
-            print(e)
-
         except AccountAlreadyExistsError:
             self.create_account_label.setText(
                 f"<font color='red'>Account with name <b>'{acc_name}' already exists.</b>.</font>"

@@ -107,10 +107,8 @@ class ReadjustmentScreen(QMainWindow):
                 self.status_label.setText(f"<font color='green'>Operation successfull</font>")
             except ValueError as e:
                 self.status_label.setText(f"<font color='red'>Invalid value.</font>")
-                print(f"{e}=")
             except decimal.InvalidOperation as e:
                 self.status_label.setText(f"<font color='red'>Invalid value.</font>")
-                print(f"{e}=")
             except UnboundLocalError:
                 self.status_label.setText(f"<font color='red'>No value given to readjust!</font>")
 

@@ -85,7 +85,6 @@ class IncomeExpenseScreen(QMainWindow):
         self.index = i
         self.acc_name = self.acc_list[self.index]
         self.acc_currency = self.acc_list_currencies[self.index]
-        print(list_acc_objects[self.index].account_total)
         account_total = currency_format(list_acc_objects[self.index].account_total)
         self.total_label.setText(f"Total: {account_total}")
 
@@ -113,10 +112,8 @@ class IncomeExpenseScreen(QMainWindow):
             self.status_label.setText(f"<font color='green'>Operation successfull</font>")
         except decimal.InvalidOperation as e:
             self.status_label.setText(f"<font color='red'>Invalid value entered.</font>")
-            print(e)
         except ValueError as e:
             self.status_label.setText(f"<font color='red'>Invalid value entered.</font>")
-            print(e)
         except NegativeAccountTotalError as e:
             self.status_label.setText(
                 f"<font color='red'>This value could lead to a negative total amount. Please check the date or the value.</font>"

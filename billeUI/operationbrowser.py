@@ -176,7 +176,6 @@ class OperationBrowser(QMainWindow):
                 self.status_label.setText(
                     f"<font color='red'><b>Can not save this change because somewhere the cumulative amount becomes negative.</b></font>"
                 )
-                print(e)
         self.save_changes_button.setEnabled(False)
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.rows_changed.clear()
