@@ -10,7 +10,8 @@ from decimal import Decimal, InvalidOperation
 
 from PyQt5 import QtCore
 from PyQt5.uic import loadUi
-from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMainWindow, QToolButton
 
 from src.queries.accqueries import ListAccountsQuery
 from src.ophandlers.operationhandler import NegativeAccountTotalError
@@ -60,6 +61,51 @@ class TransferScreen(QMainWindow):
 
         self.save_button.clicked.connect(self.save)
         self.cancel_button.clicked.connect(self.cancel)
+        self.setup_all_button_in_lineedit()
+
+    def setup_all_button_in_lineedit(self):
+        """Embeds a clickable 'All' button into the quantity_line QLineEdit."""
+        self.all_button = QToolButton(self.quantity_line)
+        self.all_button.setText("All")
+        self.all_button.setCursor(Qt.PointingHandCursor)
+        self.all_button.setStyleSheet(
+            """
+            QToolButton {
+                border: none;
+                color: #007bff;
+                padding: 0px;
+                background: transparent;
+                font-weight: bold;
+            }
+            QToolButton:hover {
+                text-decoration: underline;
+                color: #0056b3;
+            }
+        """
+        )
+
+        # Adjust size and position
+        height = self.quantity_line.sizeHint().height() - 2
+        self.all_button.setFixedSize(QtCore.QSize(30, height))
+        self.quantity_line.setTextMargins(0, 0, self.all_button.width() + 6, 0)
+        # Click event
+        self.all_button.clicked.connect(self.insert_full_amount)
+        # position
+        original_resize_event = self.quantity_line.resizeEvent
+
+        def resizeEvent(event):
+            x = self.quantity_line.rect().right() - self.all_button.width() - 4
+            y = (self.quantity_line.height() - self.all_button.height()) // 2
+            self.all_button.move(x, y)
+            if original_resize_event:
+                original_resize_event(event)
+
+        self.quantity_line.resizeEvent = resizeEvent
+
+    def insert_full_amount(self):
+        """Sets the total amount in the quantity field for transfers"""
+        if self.origin_acc_total is not None:
+            self.quantity_line.setText(str(self.origin_acc_total))
 
     def set_origin_acc_data(self, i: int):
         """

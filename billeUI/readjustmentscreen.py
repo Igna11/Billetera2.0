@@ -46,9 +46,7 @@ class ReadjustmentScreen(QMainWindow):
         acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
         self.acc_object_list = [acc for acc in acc_object_list if acc.account_total]
         self.acc_currency = [acc.account_currency for acc in self.acc_object_list]
-        self.acc_names_list = [
-            f"{acc.account_name} ({acc.account_currency})" for acc in self.acc_object_list
-        ]
+        self.acc_names_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.acc_object_list]
 
     def _reset_more_data(self) -> None:
         """Reset the data from the toggle more"""
@@ -71,7 +69,9 @@ class ReadjustmentScreen(QMainWindow):
 
     def set_acc_data(self, i: int):
         """Sets the values of acc_name, acc_currency and the value of total label."""
-        self.acc_object_list = [acc for acc in ListAccountsQuery(user_id=self.widget.user_object.user_id).execute() if acc.account_total]
+        self.acc_object_list = [
+            acc for acc in ListAccountsQuery(user_id=self.widget.user_object.user_id).execute() if acc.account_total
+        ]
         self.acc_name = self.acc_names_list[i]
         self.account_id = self.acc_object_list[i].account_id
         account_total = self.acc_object_list[i].account_total
