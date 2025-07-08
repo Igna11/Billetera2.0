@@ -365,7 +365,7 @@ QPushButton:disabled {
 </string>
                  </property>
                  <property name="text">
-                  <string>Delete account</string>
+                  <string>My accounts</string>
                  </property>
                 </widget>
                </item>
