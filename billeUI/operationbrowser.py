@@ -6,14 +6,15 @@ Created on 09/06/2025 23:45
 @author: igna
 """
 import os
+from math import ceil
 from decimal import Decimal
 from datetime import datetime, UTC
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtCore import QDate, QTime, QDateTime
+from PyQt5.QtWidgets import QMainWindow, QLabel
+from PyQt5.QtCore import Qt, QDate, QTime, QDateTime, pyqtSignal
 
 from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery, ListOperationsByDatetime
@@ -24,6 +25,40 @@ from billeUI import operationscreen, currency_format
 from billeUI import UISPATH
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
+
+
+class PageLink(QLabel):
+
+    clicked = pyqtSignal([str])
+
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent=parent)
+        self.setTextInteractionFlags(Qt.LinksAccessibleByMouse)
+        self.setStyleSheet("color: blue;")
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAlignment(Qt.AlignRight)
+        # size of the laels
+        width = self.fontMetrics().boundingRect(self.text()).width()
+        height = self.fontMetrics().height()
+        self.setFixedSize(width + 10, height + 2)
+        # visibility
+        self.setVisible(False)
+        # stiles
+        page_link_style = """
+        QLabel {
+            color: #007bff;
+            font-weight: bold;
+        }
+        QLabel:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+        """
+        self.setStyleSheet(page_link_style)
+
+    def mousePressEvent(self, event):
+        self.clicked.emit(self.text())
+        return super().mousePressEvent(event)
 
 
 class OperationBrowser(QMainWindow):
@@ -41,6 +76,26 @@ class OperationBrowser(QMainWindow):
 
         self.acc_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.accounts_object]
         self.accounts_comboBox.addItems(self.acc_list)
+
+        self.pagination_index = 0
+        self.page_label = QLabel()
+        self.next_page_label = PageLink(">", parent=self)
+        self.prev_page_label = PageLink("<", parent=self)
+
+        # self.next_page_label.setAlignment(Qt.AlignRight)
+        # self.prev_page_label.setAlignment(Qt.AlignRight)
+
+        self.HLablelLayout.addWidget(self.page_label)
+        self.HLablelLayout.addWidget(self.prev_page_label)
+        self.HLablelLayout.addWidget(self.next_page_label)
+
+        self.next_page_label.clicked.connect(self.next_page)
+        self.prev_page_label.clicked.connect(self.prev_page)
+
+        self.acc_id: str = ""
+        self.operations_list: list = []
+        # flag index so the account operations are not fetched on every page of the list of operations
+        self.current_account_index: int = -1
         self.accounts_comboBox.currentIndexChanged.connect(self.set_table_data)
 
         self.sort_type = "DESC"
@@ -49,8 +104,7 @@ class OperationBrowser(QMainWindow):
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.back_button.clicked.connect(self.back)
 
-        self.rows_changed = set()
-        self.columns_changed = {}
+        self.rows_changed: set = set()
         self.operation_table_widget.cellChanged.connect(self.cell_change)
         self.save_changes_button.clicked.connect(self.save_updated_row)
 
@@ -65,13 +119,35 @@ class OperationBrowser(QMainWindow):
                 self.sort_type = "DESC"
             self.set_table_data(self.accounts_comboBox.currentIndex())
 
+    def next_page(self) -> None:
+        try:
+            self.pagination_index += 1
+            self.set_table_data(self.accounts_comboBox.currentIndex())
+        except IndexError:
+            self.pagination_index = 0
+
+    def prev_page(self) -> None:
+        try:
+            self.pagination_index -= 1
+            self.set_table_data(self.accounts_comboBox.currentIndex())
+        except IndexError:
+            self.pagination_index = 0
+
+    def get_operations_data(self, index: int) -> None:
+        """Makes de query to fetch all operations from a given account"""
+        self.acc_id = self.accounts_object[index].model_dump()["account_id"]
+        self.operations_list = ListOperationsQuery(
+            user_id=self.widget.user_object.user_id, account_id=self.acc_id
+        ).execute(order_by_datetime=self.sort_type)
+        self.current_account_index = index
+
     def set_table_data(self, index: int) -> None:
         # Disconnect the signal for the table so cellChanged.connect is not triggered while loading a new account
         self.operation_table_widget.blockSignals(True)
-        acc_id = self.accounts_object[index].model_dump()["account_id"]
-        operations_list = ListOperationsQuery(user_id=self.widget.user_object.user_id, account_id=acc_id).execute(
-            order_by_datetime=self.sort_type
-        )
+        # call the get_operations_data only when the account is changed and not when moving through pagination
+        if self.current_account_index != index:
+            self.get_operations_data(index)
+            self.current_account_index = index
 
         headers_list = [
             "Date & Time",
@@ -83,16 +159,42 @@ class OperationBrowser(QMainWindow):
             "Description",
         ]
         column_widths = [135, 100, 90, 90, 100, 130, 900]
-        self.operation_table_widget.setRowCount(len(operations_list))
         self.operation_table_widget.setColumnCount(len(headers_list))
         self.operation_table_widget.setHorizontalHeaderLabels(headers_list)
         self.total_label.setText(f"<b>Total: Empty</b>")
 
-        if operations_list:
-            cumulative_amount = currency_format(operations_list[0].cumulative_amount)
+        if self.operations_list:
+            pagination = 100
+
+            cumulative_amount = currency_format(self.operations_list[0].cumulative_amount)
             self.total_label.setText(f"<b>Total: ${cumulative_amount}</b>")
+            if len(self.operations_list) > pagination:
+                pagination_left = self.pagination_index * pagination
+                pagination_right = (self.pagination_index + 1) * pagination
+                operations_page = self.operations_list[pagination_left:pagination_right]
+                pages = ceil(len(self.operations_list) / pagination)
+                current_page = self.pagination_index
+
+                if current_page < 0:
+                    current_page = 0
+                elif current_page >= pages:
+                    current_page = pages - 1
+                self.pagination_index = current_page
+
+                self.page_label.setText(f"Page {self.pagination_index + 1} of {pages}")
+
+                self.prev_page_label.setVisible(current_page > 0)
+                self.next_page_label.setVisible(current_page < pages - 1)
+
+                self.prev_page_label.setText("<")
+                self.next_page_label.setText(">")
+            else:
+                operations_page = self.operations_list
+                pages = 1
+
+            self.operation_table_widget.setRowCount(len(operations_page))
             tablerow = 0
-            for row_index, operation in enumerate(operations_list):
+            for row_index, operation in enumerate(operations_page):
                 # arrow = "\u2197" if operation.operation_type == "income" or operation.operation_type == "transfer_in" else "\u2198"
                 items = [
                     QtWidgets.QTableWidgetItem(operation.operation_datetime.strftime(DATEFORMAT)),
@@ -105,7 +207,7 @@ class OperationBrowser(QMainWindow):
                 ]
                 # save the account_id and operation_id to be retrieved later
                 items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
-                items[0].setData(QtCore.Qt.UserRole + 1, acc_id)
+                items[0].setData(QtCore.Qt.UserRole + 1, self.acc_id)
 
                 # colors
                 if operation.operation_type == "income":
@@ -177,6 +279,8 @@ class OperationBrowser(QMainWindow):
                     f"<font color='red'><b>Can not save this change because somewhere the cumulative amount becomes negative.</b></font>"
                 )
         self.save_changes_button.setEnabled(False)
+        # force update data in set_table by changing the self.current_account_index
+        self.current_account_index = -1
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.rows_changed.clear()
 

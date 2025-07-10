@@ -178,16 +178,20 @@
           </layout>
          </item>
          <item>
-          <widget class="QLabel" name="status_label">
-           <property name="font">
-            <font>
-             <pointsize>9</pointsize>
-            </font>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="HLablelLayout">
+           <item>
+            <widget class="QLabel" name="status_label">
+             <property name="font">
+              <font>
+               <pointsize>9</pointsize>
+              </font>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <layout class="QHBoxLayout" name="backbutton_hLayout">
