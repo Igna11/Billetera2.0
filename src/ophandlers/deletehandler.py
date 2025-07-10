@@ -5,7 +5,7 @@ Class to handle the deletion of individual operations that are not transfers and
 operations.
 """
 
-from typing import List, Literal
+from typing import List
 from decimal import Decimal
 from src.models.accmodel import UserAccounts
 from src.models.opmodel import OperationsModel, UserOperations
@@ -24,8 +24,7 @@ class DeletionHandler(OperationsModel):
     user_id: str
     account_id: str
     amount: Decimal = Decimal(0)
-    operation_type: Literal["income", "expense", "transfer"]
-    coeff: dict = {"income": 1, "expense": -1}
+    coeff: dict = {"income": 1, "expense": -1, "transfer_in": 1, "transfer_out": -1}
 
     def _calculate_cumulatives(
         self, operations_list: List[OperationsModel], previus_amount: Decimal

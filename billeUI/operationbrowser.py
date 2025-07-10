@@ -20,6 +20,7 @@ from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery, ListOperationsByDatetime
 
 from src.ophandlers.operationhandler import OperationHandler
+from src.ophandlers.deletehandler import DeletionHandler
 
 from billeUI import operationscreen, currency_format
 from billeUI import UISPATH
@@ -111,6 +112,11 @@ class OperationBrowser(QMainWindow):
         # self.status_label
         # self.total_label
 
+        # delete button
+        self.delete_op_button.setVisible(False)
+        self.operation_table_widget.itemChanged.connect(self.handle_checkbox_change)
+        self.delete_op_button.clicked.connect(self.delete_operations)
+
     def header_clicked_sort(self, index):
         if index == 0:
             if self.sort_type == "DESC":
@@ -132,6 +138,15 @@ class OperationBrowser(QMainWindow):
             self.set_table_data(self.accounts_comboBox.currentIndex())
         except IndexError:
             self.pagination_index = 0
+
+    def handle_checkbox_change(self, item):
+        if item.column() == self.operation_table_widget.columnCount() - 1:
+            any_checked = any(
+                self.operation_table_widget.item(row, self.operation_table_widget.columnCount() - 1).checkState() == Qt.Checked
+                for row in range(self.operation_table_widget.rowCount())
+            )
+            self.delete_op_button.setVisible(any_checked)
+
 
     def get_operations_data(self, index: int) -> None:
         """Makes de query to fetch all operations from a given account"""
@@ -157,8 +172,9 @@ class OperationBrowser(QMainWindow):
             "Category",
             "Subcategory",
             "Description",
+            "Select",
         ]
-        column_widths = [135, 100, 90, 90, 100, 130, 900]
+        column_widths = [135, 100, 90, 90, 100, 130, 500,10]
         self.operation_table_widget.setColumnCount(len(headers_list))
         self.operation_table_widget.setHorizontalHeaderLabels(headers_list)
         self.total_label.setText(f"<b>Total: Empty</b>")
@@ -205,9 +221,15 @@ class OperationBrowser(QMainWindow):
                     QtWidgets.QTableWidgetItem(operation.subcategory),
                     QtWidgets.QTableWidgetItem(operation.description),
                 ]
+
                 # save the account_id and operation_id to be retrieved later
                 items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
                 items[0].setData(QtCore.Qt.UserRole + 1, self.acc_id)
+
+                checkbox = QtWidgets.QTableWidgetItem()
+                checkbox.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+                checkbox.setCheckState(Qt.Unchecked)
+                self.operation_table_widget.setItem(row_index, len(items), checkbox)
 
                 # colors
                 if operation.operation_type == "income":
@@ -283,6 +305,34 @@ class OperationBrowser(QMainWindow):
         self.current_account_index = -1
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.rows_changed.clear()
+
+    def delete_operations(self):
+        reply = QtWidgets.QMessageBox.question(
+            self, "Confirm Delete", "Are you sure you want to delete the selected operations?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+        )
+        if reply == QtWidgets.QMessageBox.Yes:
+            rows_to_delete = []
+            for row in range(self.operation_table_widget.rowCount()):
+                checkbox = self.operation_table_widget.item(row, self.operation_table_widget.columnCount() - 1)
+                if checkbox and checkbox.checkState() == Qt.Checked:
+                    op_id = self.operation_table_widget.item(row, 0).data(QtCore.Qt.UserRole)
+                    acc_id = self.operation_table_widget.item(row, 0).data(QtCore.Qt.UserRole + 1)
+                    rows_to_delete.append((op_id, acc_id))
+
+            for op_id, acc_id in rows_to_delete:
+                op = GetOperationByIDQuery(user_id=self.widget.user_object.user_id, account_id=acc_id, operation_id=op_id).execute()
+                deletion = DeletionHandler(**op.model_dump())
+                #handler = OperationHandler(**op.model_dump())
+                deletion.set_account_total()
+                cml = deletion.set_cumulatives()
+                deletion.save(cml)
+
+            self.status_label.setText(f"<font color='green'>{len(rows_to_delete)} operations deleted.</font>")
+            self.current_account_index = -1  # fuerza recarga
+            self.set_table_data(self.accounts_comboBox.currentIndex())
+            self.delete_op_button.setVisible(False)
+
 
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""
