@@ -253,11 +253,13 @@ class OperationBrowser(QMainWindow):
 
     def cell_change(self, row, column):
         """detects when a cell in a row has a change"""
-        item = self.operation_table_widget.item(row, column)
-        new_value = item.text()
-        self.rows_changed.add(row)
-        self.save_changes_button.setEnabled(True)
-        self.status_label.setText(f"<font color='orange'>Changes to be saved.</font>")
+        checkbox_column: int = 7
+        if column != checkbox_column:
+            item = self.operation_table_widget.item(row, column)
+            new_value = item.text()
+            self.rows_changed.add(row)
+            self.save_changes_button.setEnabled(True)
+            self.status_label.setText(f"<font color='orange'>Changes to be saved.</font>")
 
     def save_updated_row(self):
         """Get all the new data in a row"""
@@ -323,7 +325,6 @@ class OperationBrowser(QMainWindow):
             for op_id, acc_id in rows_to_delete:
                 op = GetOperationByIDQuery(user_id=self.widget.user_object.user_id, account_id=acc_id, operation_id=op_id).execute()
                 deletion = DeletionHandler(**op.model_dump())
-                #handler = OperationHandler(**op.model_dump())
                 deletion.set_account_total()
                 cml = deletion.set_cumulatives()
                 deletion.save(cml)
