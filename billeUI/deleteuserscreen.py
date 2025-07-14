@@ -9,7 +9,7 @@ from PyQt5 import QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import QLineEdit, QMessageBox, QMainWindow
 
-from src.models.usrmodel import User, UserNotFoundError
+from src.models.usrmodel import UserNotFoundError
 from src.queries.usrqueries import GetUserByEmailQuery
 from src.commands.usrcommands import DeleteUserCommand
 from src.pwhandler.pwhandler import UnauthorizedError
@@ -37,7 +37,7 @@ class DeleteUserScreen(QMainWindow):
         """Deletes the user: Remove data from database and remove all directories with accounts on it."""
         confirmation = self.confirmation_box.isChecked()
         if not confirmation:
-            self.delete_label.setText(f"<font color='red'>Please confirm by checking the box.</font>")
+            self.delete_label.setText("<font color='red'>Please confirm by checking the box.</font>")
             return
         username = self.user_name_line.text()
         useremail = self.email_line.text()
@@ -47,7 +47,7 @@ class DeleteUserScreen(QMainWindow):
             DeleteUserCommand(user_id=user.user_id, password=password).execute()
             popup_message = self.usr_deleted_msg.question(
                 self,
-                f"User deleted.",
+                "User deleted.",
                 f"User {username} deleted.\nDo you want to go back?",
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes,
@@ -62,7 +62,7 @@ class DeleteUserScreen(QMainWindow):
         except UnauthorizedError:
             self.delete_label.setText("<font color='red'>Wrong password</font>")
         except ValueError:
-            self.delete_label.setText(f"<font color='red'>Invalid email format.</font>")
+            self.delete_label.setText("<font color='red'>Invalid email format.</font>")
 
     def back(self):
         """Returns to the WelcomScren menu."""

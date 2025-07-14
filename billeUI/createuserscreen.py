@@ -56,7 +56,7 @@ class CreateUserScreen(QMainWindow):
                 self.create_user_label.setText(f"<font color='green'>User {username} successfully created.</font>")
                 popup_message = self.usr_created_msg.question(
                     self,
-                    f"User created!.",
+                    "User created!.",
                     f"User {username} successfully created!\nDo you want to log in?",
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.Yes,

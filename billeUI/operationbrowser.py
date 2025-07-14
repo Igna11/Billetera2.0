@@ -8,16 +8,16 @@ Created on 09/06/2025 23:45
 import os
 from math import ceil
 from decimal import Decimal
-from datetime import datetime, UTC
+from datetime import datetime
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMainWindow, QLabel
-from PyQt5.QtCore import Qt, QDate, QTime, QDateTime, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from src.queries.accqueries import ListAccountsQuery
-from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery, ListOperationsByDatetime
+from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
 
 from src.ophandlers.operationhandler import OperationHandler
 from src.ophandlers.deletehandler import DeletionHandler
@@ -83,9 +83,6 @@ class OperationBrowser(QMainWindow):
         self.next_page_label = PageLink(">", parent=self)
         self.prev_page_label = PageLink("<", parent=self)
 
-        # self.next_page_label.setAlignment(Qt.AlignRight)
-        # self.prev_page_label.setAlignment(Qt.AlignRight)
-
         self.HLablelLayout.addWidget(self.page_label)
         self.HLablelLayout.addWidget(self.prev_page_label)
         self.HLablelLayout.addWidget(self.next_page_label)
@@ -142,11 +139,11 @@ class OperationBrowser(QMainWindow):
     def handle_checkbox_change(self, item):
         if item.column() == self.operation_table_widget.columnCount() - 1:
             any_checked = any(
-                self.operation_table_widget.item(row, self.operation_table_widget.columnCount() - 1).checkState() == Qt.Checked
+                self.operation_table_widget.item(row, self.operation_table_widget.columnCount() - 1).checkState()
+                == Qt.Checked
                 for row in range(self.operation_table_widget.rowCount())
             )
             self.delete_op_button.setVisible(any_checked)
-
 
     def get_operations_data(self, index: int) -> None:
         """Makes de query to fetch all operations from a given account"""
@@ -163,6 +160,7 @@ class OperationBrowser(QMainWindow):
         if self.current_account_index != index:
             self.get_operations_data(index)
             self.current_account_index = index
+            self.pagination_index = 0
 
         headers_list = [
             "Date & Time",
@@ -174,10 +172,10 @@ class OperationBrowser(QMainWindow):
             "Description",
             "Select",
         ]
-        column_widths = [135, 100, 90, 90, 100, 130, 500,10]
+        column_widths = [135, 100, 90, 90, 100, 130, 400, 10]
         self.operation_table_widget.setColumnCount(len(headers_list))
         self.operation_table_widget.setHorizontalHeaderLabels(headers_list)
-        self.total_label.setText(f"<b>Total: Empty</b>")
+        self.total_label.setText("<b>Total: Empty</b>")
 
         if self.operations_list:
             pagination = 100
@@ -205,11 +203,14 @@ class OperationBrowser(QMainWindow):
                 self.prev_page_label.setText("<")
                 self.next_page_label.setText(">")
             else:
+                self.pagination_index = 0
                 operations_page = self.operations_list
                 pages = 1
+                self.prev_page_label.setVisible(False)
+                self.next_page_label.setVisible(False)
+                self.page_label.setText(f"Page {self.pagination_index + 1} of {pages}")
 
             self.operation_table_widget.setRowCount(len(operations_page))
-            tablerow = 0
             for row_index, operation in enumerate(operations_page):
                 # arrow = "\u2197" if operation.operation_type == "income" or operation.operation_type == "transfer_in" else "\u2198"
                 items = [
@@ -251,19 +252,17 @@ class OperationBrowser(QMainWindow):
             # Reconnect the signal for the table
             self.operation_table_widget.blockSignals(False)
 
-    def cell_change(self, row, column):
+    def cell_change(self, row, column) -> None:
         """detects when a cell in a row has a change"""
         checkbox_column: int = 7
         if column != checkbox_column:
-            item = self.operation_table_widget.item(row, column)
-            new_value = item.text()
+            self.operation_table_widget.item(row, column)
             self.rows_changed.add(row)
             self.save_changes_button.setEnabled(True)
-            self.status_label.setText(f"<font color='orange'>Changes to be saved.</font>")
+            self.status_label.setText("<font color='orange'>Changes to be saved.</font>")
 
     def save_updated_row(self):
         """Get all the new data in a row"""
-        updated_data = []
         for row_idx in self.rows_changed:
             user_id = self.widget.user_object.user_id
             account_id = self.operation_table_widget.item(row_idx, 0).data(QtCore.Qt.UserRole + 1)
@@ -297,10 +296,10 @@ class OperationBrowser(QMainWindow):
             try:
                 cml = edited_op.set_cumulatives(edit_flag=True, original_operation=original_op)
                 edited_op.save(cml)
-                self.status_label.setText(f"<font color='green'>Change saved.</font>")
+                self.status_label.setText("<font color='green'>Change saved.</font>")
             except ValueError as e:
                 self.status_label.setText(
-                    f"<font color='red'><b>Can not save this change because somewhere the cumulative amount becomes negative.</b></font>"
+                    "<font color='red'><b>Can not save this change because somewhere the cumulative amount becomes negative.</b></font>"
                 )
         self.save_changes_button.setEnabled(False)
         # force update data in set_table by changing the self.current_account_index
@@ -310,8 +309,10 @@ class OperationBrowser(QMainWindow):
 
     def delete_operations(self):
         reply = QtWidgets.QMessageBox.question(
-            self, "Confirm Delete", "Are you sure you want to delete the selected operations?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            self,
+            "Confirm Delete",
+            "Are you sure you want to delete the selected operations?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
         )
         if reply == QtWidgets.QMessageBox.Yes:
             rows_to_delete = []
@@ -323,7 +324,9 @@ class OperationBrowser(QMainWindow):
                     rows_to_delete.append((op_id, acc_id))
 
             for op_id, acc_id in rows_to_delete:
-                op = GetOperationByIDQuery(user_id=self.widget.user_object.user_id, account_id=acc_id, operation_id=op_id).execute()
+                op = GetOperationByIDQuery(
+                    user_id=self.widget.user_object.user_id, account_id=acc_id, operation_id=op_id
+                ).execute()
                 deletion = DeletionHandler(**op.model_dump())
                 deletion.set_account_total()
                 cml = deletion.set_cumulatives()
@@ -333,7 +336,6 @@ class OperationBrowser(QMainWindow):
             self.current_account_index = -1  # fuerza recarga
             self.set_table_data(self.accounts_comboBox.currentIndex())
             self.delete_op_button.setVisible(False)
-
 
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""

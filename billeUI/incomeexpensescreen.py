@@ -6,19 +6,16 @@ Created on 05/02/2023 18:10
 @author: igna
 """
 import os
-import time
 import datetime
 import decimal
 
 from PyQt5 import QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtCore import QDate, QTime, QDateTime
+from PyQt5.QtCore import QDate, QTime
 
 from src.queries.accqueries import ListAccountsQuery
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
-from src.ophandlers.transferhandler import TransferHandler
-from src.ophandlers.deletehandler import DeletionHandler
 
 from billeUI import operationscreen
 from billeUI import UISPATH, currency_format
@@ -53,14 +50,14 @@ class IncomeExpenseScreen(QMainWindow):
 
     def get_date_time(self) -> datetime.datetime:
         """Generates a datetime object to be saved in the database"""
-        date = self.date_edit.date()
-        time = self.time_edit.time()
+        _date = self.date_edit.date()
+        _time = self.time_edit.time()
         dttime = datetime.datetime(
-            date.year(),
-            date.month(),
-            date.day(),
-            time.hour(),
-            time.minute(),
+            _date.year(),
+            _date.month(),
+            _date.day(),
+            _time.hour(),
+            _time.minute(),
             QTime.currentTime().second(),
             QTime.currentTime().msec(),
             tzinfo=datetime.UTC,
@@ -109,14 +106,14 @@ class IncomeExpenseScreen(QMainWindow):
             operation.set_account_total()
             cmls = operation.set_cumulatives()
             operation = operation.create_operations(cmls)
-            self.status_label.setText(f"<font color='green'>Operation successfull</font>")
+            self.status_label.setText("<font color='green'>Operation successfull</font>")
         except decimal.InvalidOperation as e:
-            self.status_label.setText(f"<font color='red'>Invalid value entered.</font>")
+            self.status_label.setText("<font color='red'>Invalid value entered.</font>")
         except ValueError as e:
-            self.status_label.setText(f"<font color='red'>Invalid value entered.</font>")
+            self.status_label.setText("<font color='red'>Invalid value entered.</font>")
         except NegativeAccountTotalError as e:
             self.status_label.setText(
-                f"<font color='red'>This value could lead to a negative total amount. Please check the date or the value.</font>"
+                "<font color='red'>This value could lead to a negative total amount. Please check the date or the value.</font>"
             )
         # Updates the total value of the account in the label "total_label"
         self.set_acc_data(self.accounts_comboBox.currentIndex())

@@ -182,16 +182,7 @@ class CategoricalPieChart(QtChart.QChart):
         """
         if chart_mode == "month":
             from_datetime, to_datetime = self.get_month_interval(time_period.year, time_period.month)
-            data_outer = AccountDataAnalyzer.group_operations(
-                user_id=user_id,
-                from_datetime=from_datetime,
-                to_datetime=to_datetime,
-                operation_type=chart_type,
-                data_type="category",
-                currency=currency,
-            )
             selected_period = time_period.strftime(format="%B %Y").capitalize()
-            month, year = time_period.month, time_period.year
             total = AccountDataAnalyzer.get_user_totals_by_period(
                 user_id=user_id,
                 from_datetime=from_datetime,

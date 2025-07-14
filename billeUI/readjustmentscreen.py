@@ -9,7 +9,7 @@ import os
 import decimal
 from PyQt5 import QtCore
 from PyQt5.uic import loadUi
-from PyQt5.QtWidgets import QMainWindow, QStackedWidget
+from PyQt5.QtWidgets import QMainWindow
 
 from src.queries.accqueries import ListAccountsQuery
 from src.ophandlers.operationhandler import OperationHandler
@@ -104,13 +104,13 @@ class ReadjustmentScreen(QMainWindow):
                 )
                 cml = readjustment.readjustment(account_total=value)
                 readjustment.create_operations(cml)
-                self.status_label.setText(f"<font color='green'>Operation successfull</font>")
+                self.status_label.setText("<font color='green'>Operation successfull</font>")
             except ValueError as e:
-                self.status_label.setText(f"<font color='red'>Invalid value.</font>")
+                self.status_label.setText("<font color='red'>Invalid value.</font>")
             except decimal.InvalidOperation as e:
-                self.status_label.setText(f"<font color='red'>Invalid value.</font>")
+                self.status_label.setText("<font color='red'>Invalid value.</font>")
             except UnboundLocalError:
-                self.status_label.setText(f"<font color='red'>No value given to readjust!</font>")
+                self.status_label.setText("<font color='red'>No value given to readjust!</font>")
 
         # Updates the total value of the account in the label "total_label"
         self.set_acc_data(self.accounts_comboBox.currentIndex())

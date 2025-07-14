@@ -38,14 +38,14 @@ class CreateAccount(QMainWindow):
         acc_currency = self.currency_comboBox.currentText()
         try:
             UserAccounts.create_acc_list_table(user_id=self.widget.user_object.user_id)
-            account = CreateUsersAccountCommand(
+            CreateUsersAccountCommand(
                 email=self.widget.user_object.email, account_name=acc_name, account_currency=acc_currency
             ).execute()
             self.create_account_label.setText(
                 f"<font color='green'>Account <b>'{acc_name}'</b> successfully created.</font>"
             )
         except ValueError as e:
-            self.create_account_label.setText(f"<font color='red'>Invalid currency'</b>.</font>")
+            self.create_account_label.setText("<font color='red'>Invalid currency'</b>.</font>")
         except AccountAlreadyExistsError:
             self.create_account_label.setText(
                 f"<font color='red'>Account with name <b>'{acc_name}' already exists.</b>.</font>"
