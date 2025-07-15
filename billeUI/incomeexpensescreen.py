@@ -49,13 +49,7 @@ class IncomeExpenseScreen(QMainWindow):
         self.time_edit.setTime(QTime.currentTime())
 
         # activate save button after a save if any line text suffer a change
-        self.accounts_comboBox.currentIndexChanged.connect(self.activate_save_button)
-        self.date_edit.dateChanged.connect(self.activate_save_button)
-        self.time_edit.timeChanged.connect(self.activate_save_button)
-        self.quantity_line.textChanged.connect(self.activate_save_button)
-        self.category_line.textChanged.connect(self.activate_save_button)
-        self.subcategory_line.textChanged.connect(self.activate_save_button)
-        self.description_line.textChanged.connect(self.activate_save_button)
+        self.activate_save_button_on_changes()
 
     def get_date_time(self) -> datetime.datetime:
         """Generates a datetime object to be saved in the database"""
@@ -130,6 +124,15 @@ class IncomeExpenseScreen(QMainWindow):
 
     def activate_save_button(self) -> None:
         self.save_button.setEnabled(True)
+
+    def activate_save_button_on_changes(self) -> None:
+        self.accounts_comboBox.currentIndexChanged.connect(self.activate_save_button)
+        self.date_edit.dateChanged.connect(self.activate_save_button)
+        self.time_edit.timeChanged.connect(self.activate_save_button)
+        self.quantity_line.textChanged.connect(self.activate_save_button)
+        self.category_line.textChanged.connect(self.activate_save_button)
+        self.subcategory_line.textChanged.connect(self.activate_save_button)
+        self.description_line.textChanged.connect(self.activate_save_button)
 
     def cancel(self) -> None:
         """Returns to the OperationScreen Menu"""
