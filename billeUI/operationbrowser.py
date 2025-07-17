@@ -97,7 +97,7 @@ class OperationBrowser(QMainWindow):
         self.accounts_comboBox.currentIndexChanged.connect(self.set_table_data)
 
         self.sort_type = "DESC"
-        self.operation_table_widget.horizontalHeader().sectionClicked.connect(self.header_clicked_sort)
+        #self.operation_table_widget.horizontalHeader().sectionClicked.connect(self.header_clicked_sort)
 
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.back_button.clicked.connect(self.back)
