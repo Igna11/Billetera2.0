@@ -2,3 +2,5 @@
 csvproto.py
 __pycache__/
 *.pyc
+billeterapp.desktop
+launcher.sh
