@@ -9,7 +9,7 @@ import sqlite3
 from typing import List, Dict
 from string import Template
 from decimal import Decimal
-from datetime import datetime, UTC
+from datetime import datetime
 from collections import defaultdict
 
 from src.models.accmodel import UserAccounts
