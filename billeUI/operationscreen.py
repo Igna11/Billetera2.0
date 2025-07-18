@@ -25,6 +25,7 @@ from billeUI import (
     transferscreen,
     accounts_dashlet_widget,
     operationbrowser,
+    accountbrowser,
 )
 
 from src.queries.accqueries import ListAccountsQuery
@@ -109,6 +110,7 @@ class OperationScreen(QMainWindow):
             (self.next_month_button, self.next_month_chart),
             (self.reset_month_button, self.current_month_chart),
             (self.browse_account_button, self.browse_operations),
+            (self.account_button, self.browse_accounts),
         ]
         for button, function in buttons_function_pairs:
             button.clicked.connect(function)
@@ -163,6 +165,11 @@ class OperationScreen(QMainWindow):
     def browse_operations(self) -> None:
         browse_operation_window = operationbrowser.OperationBrowser(widget=self.widget)
         self.widget.addWidget(browse_operation_window)
+        self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
+
+    def browse_accounts(self) -> None:
+        browse_account_window = accountbrowser.AccountDialog(widget=self.widget)
+        self.widget.addWidget(browse_account_window)
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
     def generate_chart(self, mode: str, time_period: datetime | None, currency: str) -> None:

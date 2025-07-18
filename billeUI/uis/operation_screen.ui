@@ -334,7 +334,7 @@ QPushButton:disabled {
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_5">
                <item>
-                <widget class="QPushButton" name="delete_account_button">
+                <widget class="QPushButton" name="account_button">
                  <property name="minimumSize">
                   <size>
                    <width>200</width>
