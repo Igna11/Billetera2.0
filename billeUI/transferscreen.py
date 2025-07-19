@@ -37,7 +37,7 @@ class TransferScreen(QMainWindow):
         loadUi(operation_transfer_screen, self)
         self.widget = widget
         self.operation_flag = operation_flag
-        self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
         self.acc_item_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.acc_object_list]
 
         # origin account info
@@ -112,7 +112,7 @@ class TransferScreen(QMainWindow):
         Called when user switchs items in the comboBox in order to update the
         total value of the origin account
         """
-        self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
         self.acc_item_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.acc_object_list]
         self.origin_account_object = self.acc_object_list[i]
         self.origin_acc_currency = self.origin_account_object.account_currency
@@ -124,7 +124,7 @@ class TransferScreen(QMainWindow):
         Called when user switchs items in the comboBox in order to update the
         total value of the destination account
         """
-        self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
         self.acc_item_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.acc_object_list]
         self.destination_account_object = self.acc_object_list[i]
         self.destination_acc_currency = self.destination_account_object.account_currency
