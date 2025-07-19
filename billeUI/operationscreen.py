@@ -60,7 +60,10 @@ class OperationScreen(QMainWindow):
         self.central_VR_Layout.addWidget(self.chart_view)
 
     def _get_currency_list(self) -> List[str]:
-        """Generate the list of used currencies"""
+        """
+        Generate the list of used currencies. This method does not filter by active because the currency
+        is a parameter needed to generate the charts to be desplayed even though all accounts are inactive
+        """
         acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
         currencies_list = list({account.account_currency for account in acc_list})
         currencies_list.sort()
@@ -117,7 +120,7 @@ class OperationScreen(QMainWindow):
 
     def disable_operation_buttons(self):
         """checks if any account exists"""
-        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
         if not acc_list:
             self.income_button.setEnabled(False)
             self.expense_button.setEnabled(False)
@@ -127,8 +130,8 @@ class OperationScreen(QMainWindow):
     def pre_operation(self, operation) -> None:
         """Sets the UIs according to the operation value"""
         self.operation = operation
-        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
-        self.widget.__setattr__("accounts_object", acc_list)
+        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
+        self.widget.__setattr__("account_objects", acc_list)
         if operation == "income":
             operation_inputs = incomeexpensescreen.IncomeExpenseScreen(self.operation, widget=self.widget)
         elif operation == "expense":

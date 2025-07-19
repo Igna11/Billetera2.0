@@ -36,8 +36,8 @@ class IncomeExpenseScreen(QMainWindow):
         self.index = None
         self.acc_name = None
         self.acc_currency = None
-        self.acc_items_list = widget.accounts_object
-        self.acc_list = [f"{acc.account_name} ({acc.account_currency})" for acc in widget.accounts_object]
+        self.acc_items_list = widget.account_objects
+        self.acc_list = [f"{acc.account_name} ({acc.account_currency})" for acc in widget.account_objects]
 
         self.set_operation_label(operation_flag)
         self.accounts_comboBox.addItems(self.acc_list)
@@ -79,14 +79,23 @@ class IncomeExpenseScreen(QMainWindow):
 
     def set_acc_data(self, i: int) -> None:
         """Sets the values of acc_name, acc_currency and the value of total label."""
-        list_acc_objects = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
-        self.acc_list = [acc.account_name for acc in list_acc_objects]
-        self.acc_list_currencies = [acc.account_currency for acc in list_acc_objects]
-        self.index = i
-        self.acc_name = self.acc_list[self.index]
-        self.acc_currency = self.acc_list_currencies[self.index]
-        account_total = currency_format(list_acc_objects[self.index].account_total)
-        self.total_label.setText(f"Total: {account_total}")
+        list_acc_objects = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
+        if list_acc_objects:
+            self.acc_list = [acc.account_name for acc in list_acc_objects]
+            self.acc_list_currencies = [acc.account_currency for acc in list_acc_objects]
+            self.index = i
+            self.acc_name = self.acc_list[self.index]
+            self.acc_currency = self.acc_list_currencies[self.index]
+            account_total = currency_format(list_acc_objects[self.index].account_total)
+            self.total_label.setText(f"Total: {account_total}")
+        else:
+            self.acc_list = []
+            self.acc_list_currencies = []
+            self.index = i
+            self.acc_name = None
+            self.acc_currency = None
+            account_total = None
+            self.total_label.setText(f"Total: None")
 
     def save(self) -> None:
         """Saves the operation into the database"""

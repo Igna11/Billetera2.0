@@ -11,11 +11,21 @@ from PyQt5 import QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QPushButton, QRadioButton, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QFrame
+from PyQt5.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QRadioButton,
+    QMainWindow,
+    QLabel,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
+    QMessageBox,
+)
 
 from src.models.accmodel import UserAccounts
 from src.queries.accqueries import ListAccountsQuery, GetAccountByIDQuery
-from src.commands.acccommands import EditUsersAccountCommand
+from src.commands.acccommands import EditUsersAccountCommand, DeleteUsersAccountCommand
 
 from billeUI import operationscreen, currency_format
 from billeUI import UISPATH, ICONSPATH
@@ -54,6 +64,7 @@ class AccountRow(QWidget):
         self.delete_btn = QPushButton()
         self.delete_btn.setIcon(QIcon(os.path.join(ICONSPATH, "delete.svg")))
         self.delete_btn.setToolTip("Delete account")
+        self.delete_btn.clicked.connect(self.delete_account)
 
         # self.disable_btn = QPushButton()
         # self.disable_btn.setIcon(QIcon(os.path.join(ICONSPATH, "disable.svg")))
@@ -91,6 +102,17 @@ class AccountRow(QWidget):
         outer_layout = QVBoxLayout(self)
         outer_layout.addWidget(self.frame)
         outer_layout.setContentsMargins(0, 0, 0, 0)
+
+    def delete_account(self) -> None:
+        reply = QMessageBox.question(
+            self,
+            "Confirm Delete",
+            "Are you really sure you want to delete the selected account?\nAll the information will be lost and will not be recoverable.",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+
+        if reply == QMessageBox.Yes:
+            DeleteUsersAccountCommand(user_id=self.account.user_id, account_id=self.account.account_id).execute()
 
     def enable_n_disable_account(self) -> None:
         if self.account.is_active:
