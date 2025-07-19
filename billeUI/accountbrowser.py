@@ -14,7 +14,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QPushButton, QRadioButton, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QFrame
 
 from src.models.accmodel import UserAccounts
-from src.queries.accqueries import ListAccountsQuery
+from src.queries.accqueries import ListAccountsQuery, GetAccountByIDQuery
 from src.commands.acccommands import EditUsersAccountCommand
 
 from billeUI import operationscreen, currency_format
@@ -63,10 +63,7 @@ class AccountRow(QWidget):
         self.enable_disable_btn.setToolTip("Disable account")
         if account.is_active:
             self.enable_disable_btn.setChecked(True)
-            # self.enable_disable_btn.clicked.connect(lambda x: print("holis"))
-            self.enable_disable_btn.clicked.connect(self.disable_account)
-        elif not account.is_active:
-            self.enable_disable_btn.clicked.connect(self.enable_account)
+        self.enable_disable_btn.clicked.connect(self.enable_n_disable_account)
 
         self.edit_btn = QPushButton()
         self.edit_btn.setIcon(QIcon(os.path.join(ICONSPATH, "edit.svg")))
@@ -95,18 +92,19 @@ class AccountRow(QWidget):
         outer_layout.addWidget(self.frame)
         outer_layout.setContentsMargins(0, 0, 0, 0)
 
-    def enable_account(self) -> None:
-        EditUsersAccountCommand(
-            user_id=self.account.user_id, account_id=self.account.account_id, is_active=True
-        ).execute()
-        print("account enabled")
+    def enable_n_disable_account(self) -> None:
+        if self.account.is_active:
+            EditUsersAccountCommand(
+                user_id=self.account.user_id, account_id=self.account.account_id, is_active=False
+            ).execute()
+        else:
+            EditUsersAccountCommand(
+                user_id=self.account.user_id, account_id=self.account.account_id, is_active=True
+            ).execute()
+        self.refresh_account_data()
 
-    def disable_account(self) -> None:
-        self.account.is_active = False
-        EditUsersAccountCommand(
-            user_id=self.account.user_id, account_id=self.account.account_id, is_active=False
-        ).execute()
-        print("account disabled")
+    def refresh_account_data(self) -> None:
+        self.account = GetAccountByIDQuery(user_id=self.account.user_id, account_id=self.account.account_id).execute()
 
 
 class AccountDialog(QMainWindow):
