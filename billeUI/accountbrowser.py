@@ -8,22 +8,24 @@ Created on 15/07/2025 21:17
 import os
 
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QWidget, QPushButton, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QFrame
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QPushButton, QRadioButton, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QFrame
 
 from src.models.accmodel import UserAccounts
 from src.queries.accqueries import ListAccountsQuery
+from src.commands.acccommands import EditUsersAccountCommand
 
 from billeUI import operationscreen, currency_format
 from billeUI import UISPATH, ICONSPATH
 
 
 class AccountRow(QWidget):
-    def __init__(self, account_object: UserAccounts, parent=None):
+    def __init__(self, account: UserAccounts, parent=None):
         super().__init__(parent)
         # Needed for the hover effect
+        self.account = account
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_Hover, True)
         self.frame = QFrame(self)
@@ -44,21 +46,31 @@ class AccountRow(QWidget):
         # Labels
         font = QFont()
         font.setPointSize(11)
-        self.name_label = QLabel(f"<b>{account_object.account_name}</b>")
-        self.balance_label = QLabel(
-            f"{currency_format(account_object.account_total)} {account_object.account_currency}"
-        )
+        self.name_label = QLabel(f"<b>{account.account_name}</b>")
+        self.balance_label = QLabel(f"{currency_format(account.account_total)} {account.account_currency}")
         self.balance_label.setFont(font)
 
         # Buttons and Icons
         self.delete_btn = QPushButton()
         self.delete_btn.setIcon(QIcon(os.path.join(ICONSPATH, "delete.svg")))
+        self.delete_btn.setToolTip("Delete account")
 
-        self.disable_btn = QPushButton()
-        self.disable_btn.setIcon(QIcon(os.path.join(ICONSPATH, "disable.svg")))
+        # self.disable_btn = QPushButton()
+        # self.disable_btn.setIcon(QIcon(os.path.join(ICONSPATH, "disable.svg")))
+        # self.disable_btn.setToolTip("Disable account")
+
+        self.enable_disable_btn = QRadioButton()
+        self.enable_disable_btn.setToolTip("Disable account")
+        if account.is_active:
+            self.enable_disable_btn.setChecked(True)
+            # self.enable_disable_btn.clicked.connect(lambda x: print("holis"))
+            self.enable_disable_btn.clicked.connect(self.disable_account)
+        elif not account.is_active:
+            self.enable_disable_btn.clicked.connect(self.enable_account)
 
         self.edit_btn = QPushButton()
         self.edit_btn.setIcon(QIcon(os.path.join(ICONSPATH, "edit.svg")))
+        self.edit_btn.setToolTip("Edit account")
 
         # Layouts
         text_layout = QVBoxLayout()
@@ -67,8 +79,8 @@ class AccountRow(QWidget):
 
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self.delete_btn)
-        btn_layout.addWidget(self.disable_btn)
         btn_layout.addWidget(self.edit_btn)
+        btn_layout.addWidget(self.enable_disable_btn)
 
         inner_layout = QHBoxLayout()
         inner_layout.addLayout(text_layout)
@@ -78,10 +90,23 @@ class AccountRow(QWidget):
 
         self.frame.setLayout(inner_layout)
 
-        # Layout externo (el de este widget)
+        # outer layout
         outer_layout = QVBoxLayout(self)
         outer_layout.addWidget(self.frame)
         outer_layout.setContentsMargins(0, 0, 0, 0)
+
+    def enable_account(self) -> None:
+        EditUsersAccountCommand(
+            user_id=self.account.user_id, account_id=self.account.account_id, is_active=True
+        ).execute()
+        print("account enabled")
+
+    def disable_account(self) -> None:
+        self.account.is_active = False
+        EditUsersAccountCommand(
+            user_id=self.account.user_id, account_id=self.account.account_id, is_active=False
+        ).execute()
+        print("account disabled")
 
 
 class AccountDialog(QMainWindow):
@@ -99,11 +124,9 @@ class AccountDialog(QMainWindow):
 
         self.back_button.clicked.connect(self.back)
 
-        # Aquí asumimos que en tu UI tenés un QWidget dentro del scroll con layout vertical
         self.scroll_content = self.findChild(QWidget, "scrollAreaWidgetContents")
         self.scroll_layout = self.scroll_content.layout()
 
-        # Agregar cuentas de ejemplo
         for account in self.accounts_object:
             self.add_account(account)
 

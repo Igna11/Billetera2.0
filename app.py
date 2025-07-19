@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication, QStackedWidget, QMainWindow
 
 from billeUI import welcomescreen, ICONSPATH
 
+
 class BilleterApp(QMainWindow):
     def __init__(self, stacked_widget):
         super().__init__()
