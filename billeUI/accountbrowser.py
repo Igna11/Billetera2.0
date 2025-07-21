@@ -12,22 +12,22 @@ from PyQt5.uic import loadUi
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
+    QLabel,
+    QFrame,
     QWidget,
     QPushButton,
-    QRadioButton,
     QMainWindow,
-    QLabel,
     QVBoxLayout,
     QHBoxLayout,
-    QFrame,
     QMessageBox,
+    QRadioButton,
 )
 
 from src.models.accmodel import UserAccounts
 from src.queries.accqueries import ListAccountsQuery, GetAccountByIDQuery
 from src.commands.acccommands import EditUsersAccountCommand, DeleteUsersAccountCommand
 
-from billeUI import operationscreen, currency_format
+from billeUI import operationscreen, currency_format, animatedlabel
 from billeUI import UISPATH, ICONSPATH
 
 
@@ -104,15 +104,26 @@ class AccountRow(QWidget):
         outer_layout.setContentsMargins(0, 0, 0, 0)
 
     def delete_account(self) -> None:
+        confirmation_message = """
+        Are you really sure you want to delete the selected account?
+        All the information will be lost and will not be recoverable.
+        """
         reply = QMessageBox.question(
             self,
             "Confirm Delete",
-            "Are you really sure you want to delete the selected account?\nAll the information will be lost and will not be recoverable.",
+            confirmation_message,
             QMessageBox.Yes | QMessageBox.No,
         )
 
         if reply == QMessageBox.Yes:
             DeleteUsersAccountCommand(user_id=self.account.user_id, account_id=self.account.account_id).execute()
+            # refresh view without the deleted widget
+            # self.show_temporary_message("Account deleted ✅")
+            animatedlabel.AnimatedLabel("Account deleted ✅").display()
+            parent_layout = self.parentWidget().layout()
+            parent_layout.removeWidget(self)
+            self.setParent(None)
+            self.deleteLater()
 
     def enable_n_disable_account(self) -> None:
         if self.account.is_active:
@@ -129,13 +140,13 @@ class AccountRow(QWidget):
         self.account = GetAccountByIDQuery(user_id=self.account.user_id, account_id=self.account.account_id).execute()
 
 
-class AccountDialog(QMainWindow):
+class AccountBrowser(QMainWindow):
     """
     Screen where accounts can be inspectioned, deleted and deactivated
     """
 
     def __init__(self, parent=None, widget=None):
-        super(AccountDialog, self).__init__(parent)
+        super(AccountBrowser, self).__init__(parent)
         account_browser_screen = os.path.join(UISPATH, "account_browser_screen.ui")
         loadUi(account_browser_screen, self)
         self.widget = widget

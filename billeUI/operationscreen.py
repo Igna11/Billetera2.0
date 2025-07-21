@@ -171,7 +171,7 @@ class OperationScreen(QMainWindow):
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
     def browse_accounts(self) -> None:
-        browse_account_window = accountbrowser.AccountDialog(widget=self.widget)
+        browse_account_window = accountbrowser.AccountBrowser(widget=self.widget)
         self.widget.addWidget(browse_account_window)
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
