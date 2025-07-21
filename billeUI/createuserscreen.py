@@ -11,8 +11,7 @@ from PyQt5.QtWidgets import QLineEdit, QMessageBox, QMainWindow
 
 # from src.errors import errors
 from billeUI import UISPATH
-from billeUI import welcomescreen
-from billeUI import operationscreen
+from billeUI import welcomescreen, operationscreen
 
 from src import BASEPATH
 from src.models.usrmodel import User

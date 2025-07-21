@@ -22,8 +22,7 @@ from src.ophandlers.transferhandler import (
     SameAccountError,
 )
 
-from billeUI import operationscreen
-from billeUI import UISPATH
+from billeUI import UISPATH, operationscreen, animatedlabel
 
 
 class TransferScreen(QMainWindow):
@@ -145,19 +144,26 @@ class TransferScreen(QMainWindow):
             # Display the new totals
             self.set_origin_acc_data(self.accounts_origin_comboBox.currentIndex())
             self.set_dest_acc_data(self.accounts_dest_comboBox.currentIndex())
+            animatedlabel.AnimatedLabel("Transfer successfull ✅", message_type="success").display()
         except InvalidOperation:  # Decimal error
+            animatedlabel.AnimatedLabel("Incorrect amount!", message_type="warning").display()
             self.status_label.setText("<font color='red'>Amount to transfer can not be null.</font>")
         except ValueError as e:
+            animatedlabel.AnimatedLabel("Invalid value!", message_type="error").display()
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
         except SameAccountError:
+            animatedlabel.AnimatedLabel("Origin and destination are the same!", message_type="warning").display()
             self.status_label.setText("<font color='red'>Origin and destination accounts can't be the same.</font>")
         except DifferentCurrencyTransferError:
+            animatedlabel.AnimatedLabel("Currencies must be the same!", message_type="warning").display()
             self.status_label.setText(
                 "<font color='red'>Can not transfer between accounts with different currencies.</font>"
             )
         except EmptyAccountError:
+            animatedlabel.AnimatedLabel("Empty account!", message_type="error").display()
             self.status_label.setText("<font color='red'>Origin account is empty.")
         except NegativeAccountTotalError:
+            animatedlabel.AnimatedLabel("Invalid amount!", message_type="error").display()
             self.status_label.setText(
                 f"<font color='red'>Can not transfer more than the current balance of the account: {value}."
             )

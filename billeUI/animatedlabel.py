@@ -15,21 +15,30 @@ from PyQt5.QtWidgets import (
 
 
 class AnimatedLabel(QLabel):
-    def __init__(self, message: str, duration_ms: int = 2000, parent=None):
+    def __init__(self, message: str, message_type: str = "success", duration_ms: int = 2000, parent=None):
         if parent is None:
             parent = QApplication.activeWindow() or QApplication.topLevelWidgets()[0]
         super().__init__(message, parent)
         self.duration_ms = duration_ms
 
+        if message_type == "success":
+            background_color = "#4CAF50"
+        elif message_type == "warning":
+            background_color = "#FFC107"
+        elif message_type == "error":
+            background_color = "#F44336"
+        else:
+            background_color = "#FFFFFF"
+
         self.setStyleSheet(
-            """
-            QLabel {
-                background-color: #4CAF50;
+            f"""
+            QLabel {{
+                background-color: {background_color};
                 color: white;
                 padding: 6px 12px;
                 border-radius: 10px;
                 font-weight: bold;
-            }
+            }}
         """
         )
         self.setFixedHeight(30)
@@ -37,7 +46,6 @@ class AnimatedLabel(QLabel):
 
         # botton right
         parent_rect = parent.rect()
-        print(f"{parent_rect.width()=},{self.width()=}\n,{parent_rect.height()=},{self.height()=}")
         self.move(
             parent_rect.width() - self.width() - 20,
             parent_rect.height() - self.height() - 60,

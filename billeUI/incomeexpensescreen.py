@@ -17,8 +17,7 @@ from PyQt5.QtCore import QDate, QTime
 from src.queries.accqueries import ListAccountsQuery
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
-from billeUI import operationscreen
-from billeUI import UISPATH, currency_format
+from billeUI import UISPATH, operationscreen, animatedlabel, currency_format
 
 
 class IncomeExpenseScreen(QMainWindow):
@@ -26,7 +25,7 @@ class IncomeExpenseScreen(QMainWindow):
     Screen where inputs for the operations are managed
     """
 
-    def __init__(self, operation_flag: str, parent=None, widget=None):
+    def __init__(self, operation_flag: str, parent=None, widget=None) -> None:
         super(IncomeExpenseScreen, self).__init__(parent)
         operation_incomeexpense_screen = os.path.join(UISPATH, "operation_incomeexpense_screen.ui")
         loadUi(operation_incomeexpense_screen, self)
@@ -95,7 +94,7 @@ class IncomeExpenseScreen(QMainWindow):
             self.acc_name = None
             self.acc_currency = None
             account_total = None
-            self.total_label.setText(f"Total: None")
+            self.total_label.setText("Total: None")
 
     def save(self) -> None:
         """Saves the operation into the database"""
@@ -120,11 +119,15 @@ class IncomeExpenseScreen(QMainWindow):
             operation = operation.create_operations(cmls)
             self.status_label.setText("<font color='green'>Operation successfull</font>")
             self.save_button.setEnabled(False)
+            animatedlabel.AnimatedLabel("Operation saved ✅").display()
         except decimal.InvalidOperation as e:
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
+            animatedlabel.AnimatedLabel("Invalid value", message_type="error").display()
         except ValueError as e:
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
+            animatedlabel.AnimatedLabel("Invalid value", message_type="error").display()
         except NegativeAccountTotalError as e:
+            animatedlabel.AnimatedLabel("Invalid value", message_type="error").display()
             self.status_label.setText(
                 "<font color='red'>This value could lead to a negative total amount. Please check the date or the value.</font>"
             )
@@ -149,7 +152,7 @@ class IncomeExpenseScreen(QMainWindow):
         self.widget.addWidget(operation_screen)
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
-    def keyPressEvent(self, e):
+    def keyPressEvent(self, e) -> None:
         """Returns to the OperationScreen Menu when Esc key is pressed."""
         if e.key() == QtCore.Qt.Key_Escape:
             operation_screen = operationscreen.OperationScreen(widget=self.widget)
