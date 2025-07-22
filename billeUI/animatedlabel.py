@@ -60,7 +60,7 @@ class AnimatedLabel(QLabel):
         self.move(start_pos)
 
         slide_animation = QPropertyAnimation(self, b"pos")
-        slide_animation.setDuration(700)
+        slide_animation.setDuration(1000)
         slide_animation.setStartValue(start_pos)
         slide_animation.setEndValue(end_pos)
         slide_animation.setEasingCurve(QEasingCurve.OutElastic)
