@@ -48,8 +48,8 @@ class OperationScreen(QMainWindow):
         self.set_account_dashlet_widget()
 
         # Modifiers
-        # self.text_item = QGraphicsTextItem("0")
         self.chart = categorypiechart.CategoricalPieChart()
+        self.chart.setBackgroundVisible(False)
         self.chart_view = QChartView(self.chart)
         self.current_month_chart()
         self.chart_view.setRenderHint(QPainter.Antialiasing)
