@@ -9,11 +9,10 @@ from PyQt5 import QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import QMainWindow
 
-from src.models.accmodel import UserAccounts
+from src.models.accmodel import UserAccounts, InvalidAccountNameError
 from src.commands.acccommands import CreateUsersAccountCommand, AccountAlreadyExistsError
 
-from billeUI import UISPATH
-from billeUI import operationscreen
+from billeUI import UISPATH, operationscreen, animatedlabel
 
 
 class CreateAccount(QMainWindow):
@@ -41,14 +40,22 @@ class CreateAccount(QMainWindow):
             CreateUsersAccountCommand(
                 email=self.widget.user_object.email, account_name=acc_name, account_currency=acc_currency
             ).execute()
+            animatedlabel.AnimatedLabel(f"Account '{acc_name}' successfully created! ✅").display()
             self.create_account_label.setText(
                 f"<font color='green'>Account <b>'{acc_name}'</b> successfully created.</font>"
             )
-        except ValueError as e:
-            self.create_account_label.setText("<font color='red'>Invalid currency'</b>.</font>")
-        except AccountAlreadyExistsError:
+        except InvalidAccountNameError:
+            animatedlabel.AnimatedLabel(f"'{acc_name}' is not a valid name.", message_type="error").display()
             self.create_account_label.setText(
-                f"<font color='red'>Account with name <b>'{acc_name}' already exists.</b>.</font>"
+                "<font color='red'><b>Invalid account name. No special chars are allowed</b>.</font>"
+            )
+        except ValueError as e:
+            animatedlabel.AnimatedLabel(f"'{acc_currency}' is not a valid currency.", message_type="error").display()
+            self.create_account_label.setText("<font color='red'><b>Invalid currency</b>.</font>")
+        except AccountAlreadyExistsError:
+            animatedlabel.AnimatedLabel(f"'{acc_name}' already exists!", message_type="warning").display()
+            self.create_account_label.setText(
+                f"<font color='red'>Account with name <b>'{acc_name}' already exists</b>.</font>"
             )
 
     def cancel(self):

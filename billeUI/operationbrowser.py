@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMainWindow, QLabel
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 
 from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
@@ -22,8 +22,7 @@ from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
 from src.ophandlers.operationhandler import OperationHandler
 from src.ophandlers.deletehandler import DeletionHandler
 
-from billeUI import operationscreen, currency_format
-from billeUI import UISPATH
+from billeUI import UISPATH, operationscreen, currency_format, animatedlabel
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
 
@@ -114,13 +113,13 @@ class OperationBrowser(QMainWindow):
         self.operation_table_widget.itemChanged.connect(self.handle_checkbox_change)
         self.delete_op_button.clicked.connect(self.delete_operations)
 
-    def header_clicked_sort(self, index):
-        if index == 0:
-            if self.sort_type == "DESC":
-                self.sort_type = "ASC"
-            elif self.sort_type == "ASC":
-                self.sort_type = "DESC"
-            self.set_table_data(self.accounts_comboBox.currentIndex())
+    # def header_clicked_sort(self, index):
+    #    if index == 0:
+    #        if self.sort_type == "DESC":
+    #            self.sort_type = "ASC"
+    #        elif self.sort_type == "ASC":
+    #            self.sort_type = "DESC"
+    #        self.set_table_data(self.accounts_comboBox.currentIndex())
 
     def next_page(self) -> None:
         try:
@@ -297,9 +296,11 @@ class OperationBrowser(QMainWindow):
                 cml = edited_op.set_cumulatives(edit_flag=True, original_operation=original_op)
                 edited_op.save(cml)
                 self.status_label.setText("<font color='green'>Change saved.</font>")
+                animatedlabel.AnimatedLabel("Changes successfully saved ✅").display()
             except ValueError as e:
+                animatedlabel.AnimatedLabel("Edition not allowed!!", message_type="error").display()
                 self.status_label.setText(
-                    "<font color='red'><b>Can not save this change because somewhere the cumulative amount becomes negative.</b></font>"
+                    "<font color='red'>Can not save this change because somewhere the cumulative amount becomes negative.</font>"
                 )
         self.save_changes_button.setEnabled(False)
         # force update data in set_table by changing the self.current_account_index
@@ -332,6 +333,9 @@ class OperationBrowser(QMainWindow):
                 cml = deletion.set_cumulatives()
                 deletion.save(cml)
 
+            # QTimer used to deffer slightly the generation of the label to next iteration of the event loop, so the main
+            # window get of focus again. Otherwise it will not appear.
+            QTimer.singleShot(1, lambda: animatedlabel.AnimatedLabel("Operations deleted successfully ✅").display())
             self.status_label.setText(f"<font color='green'>{len(rows_to_delete)} operations deleted.</font>")
             self.current_account_index = -1  # fuerza recarga
             self.set_table_data(self.accounts_comboBox.currentIndex())
