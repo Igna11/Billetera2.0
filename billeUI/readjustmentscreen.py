@@ -102,10 +102,10 @@ class ReadjustmentScreen(QMainWindow):
             readjustment.create_operations(cml)
             animatedlabel.AnimatedLabel("Operation successfull ✅").display()
             self.status_label.setText("<font color='green'>Operation successfull</font>")
-        except ValueError as e:
+        except ValueError:
             animatedlabel.AnimatedLabel("Invalid value!", message_type="error").display()
             self.status_label.setText("<font color='red'>Invalid value.</font>")
-        except decimal.InvalidOperation as e:
+        except decimal.InvalidOperation:
             animatedlabel.AnimatedLabel("Invalid value!", message_type="error").display()
             self.status_label.setText("<font color='red'>Invalid value.</font>")
         except UnboundLocalError:

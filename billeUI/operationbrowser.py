@@ -7,20 +7,22 @@ Created on 09/06/2025 23:45
 """
 import os
 from math import ceil
+from typing import List
 from decimal import Decimal
 from datetime import datetime
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QMainWindow, QLabel
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtWidgets import QMainWindow, QLabel
 
 from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
 
-from src.ophandlers.operationhandler import OperationHandler
+from src.models.opmodel import UserOperations
 from src.ophandlers.deletehandler import DeletionHandler
+from src.ophandlers.operationhandler import OperationHandler
 
 from billeUI import UISPATH, operationscreen, currency_format, animatedlabel
 
@@ -76,6 +78,18 @@ class OperationBrowser(QMainWindow):
 
         self.acc_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.accounts_object]
         self.accounts_comboBox.addItems(self.acc_list)
+
+        self.column_widths = [135, 100, 90, 90, 100, 130, 400, 10]
+        self.headers_list = [
+            "Date & Time",
+            "Cumulatives",
+            "Amount",
+            "Operation Type",
+            "Category",
+            "Subcategory",
+            "Description",
+            "Select",
+        ]
 
         self.pagination_index = 0
         self.page_label = QLabel()
@@ -161,19 +175,8 @@ class OperationBrowser(QMainWindow):
             self.current_account_index = index
             self.pagination_index = 0
 
-        headers_list = [
-            "Date & Time",
-            "Cumulatives",
-            "Amount",
-            "Operation Type",
-            "Category",
-            "Subcategory",
-            "Description",
-            "Select",
-        ]
-        column_widths = [135, 100, 90, 90, 100, 130, 400, 10]
-        self.operation_table_widget.setColumnCount(len(headers_list))
-        self.operation_table_widget.setHorizontalHeaderLabels(headers_list)
+        self.operation_table_widget.setColumnCount(len(self.headers_list))
+        self.operation_table_widget.setHorizontalHeaderLabels(self.headers_list)
         self.total_label.setText("<b>Total: Empty</b>")
 
         if self.operations_list:
@@ -210,46 +213,52 @@ class OperationBrowser(QMainWindow):
                 self.page_label.setText(f"Page {self.pagination_index + 1} of {pages}")
 
             self.operation_table_widget.setRowCount(len(operations_page))
-            for row_index, operation in enumerate(operations_page):
-                # arrow = "\u2197" if operation.operation_type == "income" or operation.operation_type == "transfer_in" else "\u2198"
-                items = [
-                    QtWidgets.QTableWidgetItem(operation.operation_datetime.strftime(DATEFORMAT)),
-                    QtWidgets.QTableWidgetItem(f"{currency_format(operation.cumulative_amount)}"),
-                    QtWidgets.QTableWidgetItem(f"{currency_format(operation.amount)}"),
-                    QtWidgets.QTableWidgetItem(operation.operation_type),
-                    QtWidgets.QTableWidgetItem(operation.category),
-                    QtWidgets.QTableWidgetItem(operation.subcategory),
-                    QtWidgets.QTableWidgetItem(operation.description),
-                ]
-
-                # save the account_id and operation_id to be retrieved later
-                items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
-                items[0].setData(QtCore.Qt.UserRole + 1, self.acc_id)
-
-                checkbox = QtWidgets.QTableWidgetItem()
-                checkbox.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-                checkbox.setCheckState(Qt.Unchecked)
-                self.operation_table_widget.setItem(row_index, len(items), checkbox)
-
-                # colors
-                if operation.operation_type == "income":
-                    background_color = QColor(200, 255, 200)
-                elif operation.operation_type == "transfer_in":
-                    background_color = QColor(190, 235, 255)
-                elif operation.operation_type == "expense":
-                    background_color = QColor(255, 200, 200)
-                elif operation.operation_type == "transfer_out":
-                    background_color = QColor(255, 230, 180)
-                else:
-                    background_color = QColor(255, 255, 255)
-
-                for column_index, item in enumerate(items):
-                    item.setBackground(background_color)
-                    item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
-                    self.operation_table_widget.setItem(row_index, column_index, item)
-                    self.operation_table_widget.setColumnWidth(column_index, column_widths[column_index])
+            self.set_table_items(operations_page)
             # Reconnect the signal for the table
             self.operation_table_widget.blockSignals(False)
+        else:
+            self.operation_table_widget.clearContents()
+
+    def set_table_items(self, current_operations_page: List[UserOperations]) -> None:
+        """wrapper function to save set the info into the table"""
+        for row_index, operation in enumerate(current_operations_page):
+            # arrow = "\u2197" if operation.operation_type == "income" or operation.operation_type == "transfer_in" else "\u2198"
+            items = [
+                QtWidgets.QTableWidgetItem(operation.operation_datetime.strftime(DATEFORMAT)),
+                QtWidgets.QTableWidgetItem(f"{currency_format(operation.cumulative_amount)}"),
+                QtWidgets.QTableWidgetItem(f"{currency_format(operation.amount)}"),
+                QtWidgets.QTableWidgetItem(operation.operation_type),
+                QtWidgets.QTableWidgetItem(operation.category),
+                QtWidgets.QTableWidgetItem(operation.subcategory),
+                QtWidgets.QTableWidgetItem(operation.description),
+            ]
+
+            # save the account_id and operation_id to be retrieved later
+            items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
+            items[0].setData(QtCore.Qt.UserRole + 1, self.acc_id)
+
+            checkbox = QtWidgets.QTableWidgetItem()
+            checkbox.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+            checkbox.setCheckState(Qt.Unchecked)
+            self.operation_table_widget.setItem(row_index, len(items), checkbox)
+
+            # colors
+            if operation.operation_type == "income":
+                background_color = QColor(200, 255, 200)
+            elif operation.operation_type == "transfer_in":
+                background_color = QColor(190, 235, 255)
+            elif operation.operation_type == "expense":
+                background_color = QColor(255, 200, 200)
+            elif operation.operation_type == "transfer_out":
+                background_color = QColor(255, 230, 180)
+            else:
+                background_color = QColor(255, 255, 255)
+
+            for column_index, item in enumerate(items):
+                item.setBackground(background_color)
+                item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+                self.operation_table_widget.setItem(row_index, column_index, item)
+                self.operation_table_widget.setColumnWidth(column_index, self.column_widths[column_index])
 
     def cell_change(self, row, column) -> None:
         """detects when a cell in a row has a change"""
@@ -297,7 +306,7 @@ class OperationBrowser(QMainWindow):
                 edited_op.save(cml)
                 self.status_label.setText("<font color='green'>Change saved.</font>")
                 animatedlabel.AnimatedLabel("Changes successfully saved ✅").display()
-            except ValueError as e:
+            except ValueError:
                 animatedlabel.AnimatedLabel("Edition not allowed!!", message_type="error").display()
                 self.status_label.setText(
                     "<font color='red'>Can not save this change because somewhere the cumulative amount becomes negative.</font>"

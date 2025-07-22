@@ -148,7 +148,7 @@ class TransferScreen(QMainWindow):
         except InvalidOperation:  # Decimal error
             animatedlabel.AnimatedLabel("Incorrect amount!", message_type="warning").display()
             self.status_label.setText("<font color='red'>Amount to transfer can not be null.</font>")
-        except ValueError as e:
+        except ValueError:
             animatedlabel.AnimatedLabel("Invalid value!", message_type="error").display()
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
         except SameAccountError:

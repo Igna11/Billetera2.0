@@ -120,13 +120,13 @@ class IncomeExpenseScreen(QMainWindow):
             self.status_label.setText("<font color='green'>Operation successfull</font>")
             self.save_button.setEnabled(False)
             animatedlabel.AnimatedLabel("Operation saved ✅").display()
-        except decimal.InvalidOperation as e:
+        except decimal.InvalidOperation:
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
             animatedlabel.AnimatedLabel("Invalid value", message_type="error").display()
-        except ValueError as e:
+        except ValueError:
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
             animatedlabel.AnimatedLabel("Invalid value", message_type="error").display()
-        except NegativeAccountTotalError as e:
+        except NegativeAccountTotalError:
             animatedlabel.AnimatedLabel("Invalid value", message_type="error").display()
             self.status_label.setText(
                 "<font color='red'>This value could lead to a negative total amount. Please check the date or the value.</font>"

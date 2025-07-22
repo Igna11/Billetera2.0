@@ -49,7 +49,7 @@ class CreateAccount(QMainWindow):
             self.create_account_label.setText(
                 "<font color='red'><b>Invalid account name. No special chars are allowed</b>.</font>"
             )
-        except ValueError as e:
+        except ValueError:
             animatedlabel.AnimatedLabel(f"'{acc_currency}' is not a valid currency.", message_type="error").display()
             self.create_account_label.setText("<font color='red'><b>Invalid currency</b>.</font>")
         except AccountAlreadyExistsError:
