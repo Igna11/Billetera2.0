@@ -58,7 +58,7 @@ class ReadjustmentScreen(QMainWindow):
             self.quantity_line.setText("")
             self.status_label.setText("")
 
-    def set_account_info(self, i: int) -> None:
+    def set_account_info(self) -> None:
         """Sets the account objects, names y currencies to be used in the acounts_comboBox widget"""
         acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
         self.acc_object_list = [acc for acc in acc_object_list]
