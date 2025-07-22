@@ -218,7 +218,7 @@ class OperationScreen(QMainWindow):
             time_period=stime,
             currency=self.currency,
         )
-        self.chart.add_slices(data_inner, data_outer)
+        self.chart.add_slices(data_inner, data_outer, self.chart_type)
         self.chart.update_labels()
         # Add the chart_view to the central_VR_layout
         self.central_VR_Layout.addWidget(self.chart_view)
@@ -315,7 +315,7 @@ class OperationScreen(QMainWindow):
                 currency=self.currency,
             )
 
-        self.chart.add_slices(data_inner, data_outer)
+        self.chart.add_slices(data_inner, data_outer, self.chart_type)
         self.chart.update_labels()
         # Add the chart_view to the central_VR_layout
         self.central_VR_Layout.addWidget(self.chart_view)

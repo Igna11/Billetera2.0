@@ -13,5 +13,4 @@ def currency_format(value: str | float | Decimal, to_numeric: bool = False) -> s
     if not to_numeric:
         return f"{value:,.2f}".replace(".", "x").replace(",", ".").replace("x", ",")
     elif isinstance(value, str):
-        print("es estring")
         return value.replace(".", "").replace(",", ".")

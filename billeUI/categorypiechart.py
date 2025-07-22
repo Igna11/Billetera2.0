@@ -7,12 +7,11 @@ updated on 06/2025
 from datetime import datetime, UTC
 from typing import List, Tuple, Dict
 
-from billeUI import currency_format
-
 from PyQt5 import QtChart
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 
 from src.datahandler.datahandler import AccountDataAnalyzer
+from billeUI import currency_format
 
 
 class CategoricalPieChart(QtChart.QChart):
@@ -118,19 +117,43 @@ class CategoricalPieChart(QtChart.QChart):
         for pie_slice in self.series_inner.slices():
             self.series_inner.take(pie_slice)
 
-    def add_slices(self, data_inner: List[Dict], data_outer: List[Dict]) -> None:
+    def add_slices(self, data_inner: List[Dict], data_outer: List[Dict], chart_type: str = "expense") -> None:
         """
         Loops through the data to the create each slice of the inner and
         the outer series of the pie chart.
         """
         font = QFont()
         font.setPointSize(7)
+
+        categories_list = [data_dict["category"] for data_dict in data_outer]
+        categories_colors = dict(
+            zip(categories_list, self.slices_colorsHSV(n=len(categories_list), chart_type=chart_type))
+        )
+
         for group in data_outer:
-            slice_outer = QtChart.QPieSlice(group["category"], group["total"])
+            category = group["category"]
+            cat_total = group["total"]
+            # base_color = CATEGORY_COLOR_MAP.get(category, QColor("#999999"))
+            base_color = categories_colors.get(category, QColor("gray"))
+
+            slice_outer = QtChart.QPieSlice(category, cat_total)
+            slice_outer.setBrush(base_color)
             self.series_outer.append(slice_outer)
+
+            sub_index = 0
+            sub_count = sum(1 for s in data_inner if s["category"] == category)
+
             for subgroup in data_inner:
-                if subgroup["category"] == group["category"]:
-                    slice_inner = QtChart.QPieSlice(subgroup["subcategory"], subgroup["total"])
+                if subgroup["category"] == category:
+                    subcategory = subgroup["subcategory"]
+                    subcat_total = subgroup["total"]
+                    slice_inner = QtChart.QPieSlice(subcategory, subcat_total)
+
+                    factor = (sub_index + 1) / (sub_count + 1)
+                    lighter = self.lighten_color(base_color, factor)
+                    slice_inner.setBrush(lighter)
+                    sub_index += 1
+
                     slice_inner.hovered.connect(
                         lambda is_hovered, slice_=slice_inner: slice_.setLabelVisible(is_hovered)
                     )
@@ -205,3 +228,30 @@ class CategoricalPieChart(QtChart.QChart):
         total_decimal = f"{total:.2f}".split(".")[1]
         title = f"<h3><p align='center' style='color:black'><b>{title_type}: ${total_int}<sup>{total_decimal}</sup><br>{selected_period}</b></p>"
         self.setTitle(title)
+
+    def lighten_color(self, color: QColor, factor: float) -> QColor:
+        """
+        Devuelve un QColor aclarado por un factor (0.0 - 1.0).
+        factor cercano a 1 = muy claro, cercano a 0 = color original
+        """
+        r = int(color.red() + (255 - color.red()) * factor)
+        g = int(color.green() + (255 - color.green()) * factor)
+        b = int(color.blue() + (255 - color.blue()) * factor)
+        return QColor(r, g, b)
+
+    def slices_colorsHSV(
+        self, n: int, saturation: int = 180, value: int = 230, chart_type: str = "expense"
+    ) -> List[QColor]:
+        if n == 0:
+            n = 1
+        if chart_type == "expense":
+            start_hue, end_hue = 0, 80
+        elif chart_type == "income":
+            start_hue, end_hue = 110, 280
+        else:
+            start_hue, end_hue = 0, 360
+
+        color_step = (end_hue - start_hue) / n
+        colors = [QColor.fromHsv(int(start_hue + i * color_step), saturation, value) for i in range(n)]
+
+        return colors
