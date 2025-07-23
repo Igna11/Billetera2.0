@@ -11,7 +11,7 @@ from typing import List
 from decimal import Decimal
 from datetime import datetime
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
@@ -110,10 +110,13 @@ class OperationBrowser(QMainWindow):
         self.accounts_comboBox.currentIndexChanged.connect(self.set_table_data)
 
         self.sort_type = "DESC"
-        # self.operation_table_widget.horizontalHeader().sectionClicked.connect(self.header_clicked_sort)
 
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.back_button.clicked.connect(self.back)
+
+        # filters
+        header = self.operation_table_widget.horizontalHeader()
+        header.sectionClicked.connect(self.filter_on_headers)
 
         self.rows_changed: set = set()
         self.operation_table_widget.cellChanged.connect(self.cell_change)
@@ -126,14 +129,6 @@ class OperationBrowser(QMainWindow):
         self.delete_op_button.setVisible(False)
         self.operation_table_widget.itemChanged.connect(self.handle_checkbox_change)
         self.delete_op_button.clicked.connect(self.delete_operations)
-
-    # def header_clicked_sort(self, index):
-    #    if index == 0:
-    #        if self.sort_type == "DESC":
-    #            self.sort_type = "ASC"
-    #        elif self.sort_type == "ASC":
-    #            self.sort_type = "DESC"
-    #        self.set_table_data(self.accounts_comboBox.currentIndex())
 
     def next_page(self) -> None:
         try:
@@ -222,7 +217,6 @@ class OperationBrowser(QMainWindow):
     def set_table_items(self, current_operations_page: List[UserOperations]) -> None:
         """wrapper function to save set the info into the table"""
         for row_index, operation in enumerate(current_operations_page):
-            # arrow = "\u2197" if operation.operation_type == "income" or operation.operation_type == "transfer_in" else "\u2198"
             items = [
                 QtWidgets.QTableWidgetItem(operation.operation_datetime.strftime(DATEFORMAT)),
                 QtWidgets.QTableWidgetItem(f"{currency_format(operation.cumulative_amount)}"),
@@ -350,6 +344,63 @@ class OperationBrowser(QMainWindow):
             self.set_table_data(self.accounts_comboBox.currentIndex())
             self.delete_op_button.setVisible(False)
 
+    def copy_selected_cells(self):
+        """Gets all text from items in the selected range of cells, then join them in a string with new lines and tabs"""
+        selection = self.operation_table_widget.selectedRanges()
+        if selection:
+            selected = selection[0]
+            text_data = ""
+            for row in range(selected.topRow(), selected.bottomRow() + 1):
+                row_data = []
+                for col in range(selected.leftColumn(), selected.rightColumn() + 1):
+                    item = self.operation_table_widget.item(row, col)
+                    row_data.append(item.text() if item else "")
+                text_data += "\t".join(row_data) + "\n"
+            QtWidgets.QApplication.clipboard().setText(text_data)
+
+    def filter_on_headers(self, index) -> None:
+        """Generates a menu with the unique values of the given (clicked) column"""
+        column_name = self.operation_table_widget.horizontalHeaderItem(index).text()
+        if column_name.lower() not in ("category", "subcategory", "operation type"):
+            return
+
+        unique_values = set()
+        for row in range(self.operation_table_widget.rowCount()):
+            item = self.operation_table_widget.item(row, index).text()
+            if item:
+                unique_values.add(item)
+
+        menu = QtWidgets.QMenu(self)
+        action_clear = menu.addAction("Remove filter")
+        menu.addSeparator()
+
+        actions = {}
+        for value in sorted(unique_values):
+            action = menu.addAction(value)
+            actions[action] = value
+
+        pos = QtGui.QCursor.pos()
+        choosen_action = menu.exec_(pos)
+
+        if choosen_action == action_clear:
+            self.clear_filters()
+        elif choosen_action in actions:
+            self.apply_filter(index, actions[choosen_action])
+
+    def clear_filters(self) -> None:
+        """Removes the filters applied in the table"""
+        for row in range(self.operation_table_widget.rowCount()):
+            self.operation_table_widget.setRowHidden(row, False)
+
+    def apply_filter(self, column_index: int, value: str) -> None:
+        """Applies the filter to the table"""
+        for row in range(self.operation_table_widget.rowCount()):
+            item = self.operation_table_widget.item(row, column_index)
+            if item and item.text() != value:
+                self.operation_table_widget.setRowHidden(row, True)
+            else:
+                self.operation_table_widget.setRowHidden(row, False)
+
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""
         operation_screen = operationscreen.OperationScreen(widget=self.widget)
@@ -358,7 +409,9 @@ class OperationBrowser(QMainWindow):
 
     def keyPressEvent(self, e):
         """Returns to the OperationScreen Menu when Esc key is pressed."""
-        if e.key() == QtCore.Qt.Key_Escape:
+        if e.matches(QtGui.QKeySequence.Copy):
+            self.copy_selected_cells()
+        elif e.key() == QtCore.Qt.Key_Escape:
             operation_screen = operationscreen.OperationScreen(widget=self.widget)
             self.widget.addWidget(operation_screen)
             self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
