@@ -24,9 +24,14 @@ from src.models.opmodel import UserOperations
 from src.ophandlers.deletehandler import DeletionHandler
 from src.ophandlers.operationhandler import OperationHandler
 
-from billeUI import UISPATH, operationscreen, currency_format, animatedlabel
+from billeUI import UISPATH, operationscreen, currency_format, animatedlabel, headerfiltermixin
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
+
+
+class HeaderFilter(headerfiltermixin.HeaderFilterMixin):
+    def __init__(self):
+        super().__init__()
 
 
 class PageLink(QLabel):
@@ -63,7 +68,7 @@ class PageLink(QLabel):
         return super().mousePressEvent(event)
 
 
-class OperationBrowser(QMainWindow):
+class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
     """
     Screen where inputs for the operations are managed
     """
@@ -75,7 +80,6 @@ class OperationBrowser(QMainWindow):
         self.widget = widget
 
         self.accounts_object = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
-
         self.acc_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.accounts_object]
         self.accounts_comboBox.addItems(self.acc_list)
 
@@ -91,6 +95,7 @@ class OperationBrowser(QMainWindow):
             "Select",
         ]
 
+        self.active_filters = {}
         self.pagination_index = 0
         self.page_label = QLabel()
         self.next_page_label = PageLink(">", parent=self)
@@ -115,8 +120,7 @@ class OperationBrowser(QMainWindow):
         self.back_button.clicked.connect(self.back)
 
         # filters
-        header = self.operation_table_widget.horizontalHeader()
-        header.sectionClicked.connect(self.filter_on_headers)
+        self.init_header_filter(self.operation_table_widget, filterable_columns=[3, 4, 5])
 
         self.rows_changed: set = set()
         self.operation_table_widget.cellChanged.connect(self.cell_change)
@@ -357,49 +361,6 @@ class OperationBrowser(QMainWindow):
                     row_data.append(item.text() if item else "")
                 text_data += "\t".join(row_data) + "\n"
             QtWidgets.QApplication.clipboard().setText(text_data)
-
-    def filter_on_headers(self, index) -> None:
-        """Generates a menu with the unique values of the given (clicked) column"""
-        column_name = self.operation_table_widget.horizontalHeaderItem(index).text()
-        if column_name.lower() not in ("category", "subcategory", "operation type"):
-            return
-
-        unique_values = set()
-        for row in range(self.operation_table_widget.rowCount()):
-            item = self.operation_table_widget.item(row, index).text()
-            if item:
-                unique_values.add(item)
-
-        menu = QtWidgets.QMenu(self)
-        action_clear = menu.addAction("Remove filter")
-        menu.addSeparator()
-
-        actions = {}
-        for value in sorted(unique_values):
-            action = menu.addAction(value)
-            actions[action] = value
-
-        pos = QtGui.QCursor.pos()
-        choosen_action = menu.exec_(pos)
-
-        if choosen_action == action_clear:
-            self.clear_filters()
-        elif choosen_action in actions:
-            self.apply_filter(index, actions[choosen_action])
-
-    def clear_filters(self) -> None:
-        """Removes the filters applied in the table"""
-        for row in range(self.operation_table_widget.rowCount()):
-            self.operation_table_widget.setRowHidden(row, False)
-
-    def apply_filter(self, column_index: int, value: str) -> None:
-        """Applies the filter to the table"""
-        for row in range(self.operation_table_widget.rowCount()):
-            item = self.operation_table_widget.item(row, column_index)
-            if item and item.text() != value:
-                self.operation_table_widget.setRowHidden(row, True)
-            else:
-                self.operation_table_widget.setRowHidden(row, False)
 
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""
