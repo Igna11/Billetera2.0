@@ -418,6 +418,56 @@ class UserOperations(OperationsModel):
 
         return operations
 
+    @classmethod
+    def get_unique_categories(cls, user_id: str, account_id: str) -> List[str]:
+        """
+        Retrieves all the different categories exiting in a given account:
+
+        Args:
+            user_id (str): The unique identifier for the user
+            account_id (str): The unique identifier for the account
+        Returns:
+            list[str]: A sorted list of strings (categories)
+        """
+        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(user_id)))
+        # conn.row_factory = sqlite3.Row
+
+        cur = conn.cursor()
+        cur.execute("SELECT table_name FROM accounts WHERE account_id = ?", (account_id,))
+        table_name = cur.fetchone()[0]
+        cur.execute(f"SELECT DISTINCT category FROM {table_name};")
+        categories = cur.fetchall()
+        conn.close()
+
+        return categories
+
+    @classmethod
+    def get_unique_subcategories(cls, user_id: str, account_id: str, category: str = None) -> List[str]:
+        """
+        Retrieves all the different subcategories exiting in a given account:
+
+        Args:
+            user_id (str): The unique identifier for the user
+            account_id (str): The unique identifier for the account
+            **kwargs (dict): like the main category to only retrieve unique values for a given category
+        Returns:
+            list[str]: A sorted list of strings (subcategories)
+        """
+        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(user_id)))
+        # conn.row_factory = sqlite3.Row
+
+        cur = conn.cursor()
+        cur.execute("SELECT table_name FROM accounts WHERE account_id = ?", (account_id,))
+        table_name = cur.fetchone()[0]
+        if category:
+            cur.execute(f"SELECT DISTINCT subcategory FROM {table_name} WHERE category = ?", (category,))
+        else:
+            cur.execute(f"SELECT DISTINCT subcategory FROM {table_name};")
+        subcategories = cur.fetchall()
+        conn.close()
+
+        return subcategories
+
     def create(self) -> "UserOperations":
         """
         creates a new operation entry in the database in the given table (account).
