@@ -21,6 +21,31 @@ class GetOperationByIDQuery(OperationsModel):
         return operations
 
 
+class GetUniqueCategoriesByAccount(OperationsModel):
+
+    user_id: str
+    account_id: str
+    amount: Optional[float] = None
+    operation_type: Optional[str] = None
+
+    def execute(self) -> List:
+        categories = UserOperations.get_unique_categories(self.user_id, self.account_id)
+        return categories
+
+
+class GetUniqueSubcategoriesByAccount(OperationsModel):
+
+    user_id: str
+    account_id: str
+    category: Optional[str] = None
+    amount: Optional[float] = None
+    operation_type: Optional[str] = None
+
+    def execute(self) -> List:
+        subcategories = UserOperations.get_unique_subcategories(self.user_id, self.account_id, self.category)
+        return subcategories
+
+
 class GetLastChronologicalOperationQuery(OperationsModel):
 
     user_id: str
