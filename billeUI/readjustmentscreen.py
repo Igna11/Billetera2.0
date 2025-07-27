@@ -8,11 +8,13 @@ Created on 12/02/2023 18:10
 import os
 import decimal
 from PyQt5 import QtCore
+from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
-from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QMainWindow, QCompleter
 
 from src.queries.accqueries import ListAccountsQuery
 from src.ophandlers.operationhandler import OperationHandler
+from src.queries.opqueries import GetUniqueCategoriesByAccount, GetUniqueSubcategoriesByAccount
 
 from billeUI import UISPATH, operationscreen, animatedlabel
 
@@ -34,6 +36,11 @@ class ReadjustmentScreen(QMainWindow):
         self.accounts_comboBox.addItems(self.acc_names_list)
         self.set_account_data(self.accounts_comboBox.currentIndex())
         self.accounts_comboBox.currentIndexChanged.connect(self.set_account_data)
+        self.accounts_comboBox.currentIndexChanged.connect(self.set_categories_completer)
+        self.accounts_comboBox.currentIndexChanged.connect(self.set_subcategories_completer)
+        self.category_line.textChanged.connect(self.set_subcategories_completer)
+        self.set_categories_completer()
+        self.set_subcategories_completer()
         self.save_button.clicked.connect(self.save)
         self.cancel_button.clicked.connect(self.cancel)
         self.more_radio_button.clicked.connect(self.more_button)
@@ -73,6 +80,55 @@ class ReadjustmentScreen(QMainWindow):
         self.account_id = self.acc_object_list[i].account_id
         account_total = self.acc_object_list[i].account_total
         self.total_label.setText(f"Total: {account_total}")
+
+    def get_list_of_categories_from_db(self) -> list:
+        """
+        Gets all existing categories from a given account to be used as recomendation
+        """
+        categories = GetUniqueCategoriesByAccount(user_id=self.widget.user_object.user_id).execute()
+        # transform list of tuples [(val1, ), (val2, ), ..., (valN, )] to list [val1, val2, ..., valN]
+        categories = [cat[0] for cat in categories]
+
+        return categories
+
+    def get_list_of_subcategories_from_db(self, category: str = None) -> list:
+        """
+        Gets all existing categories from a given account to be used as recomendation
+        """
+        subcategories = GetUniqueSubcategoriesByAccount(
+            user_id=self.widget.user_object.user_id,
+            category=category,
+        ).execute()
+        # transform list of tuples [(val1, ), (val2, ), ..., (valN, )] to list [val1, val2, ..., valN]
+        subcategories = [subcat[0] for subcat in subcategories]
+
+        return subcategories
+
+    def set_categories_completer(self) -> None:
+        """
+        Sets the list of categories for a given account to be recommendated in the
+        Line text for category
+        """
+        data = self.get_list_of_categories_from_db()
+        category_completer = QCompleter(data, self)
+        category_completer.setCaseSensitivity(Qt.CaseInsensitive)
+        category_completer.setFilterMode(Qt.MatchContains)
+        self.category_line.setCompleter(category_completer)
+
+    def set_subcategories_completer(self) -> None:
+        """
+        Sets the list of categories for a given account to be recommendated in the
+        Line text for category
+        """
+        if self.category_line.text():
+            category = self.category_line.text()
+        else:
+            category = None
+        data = self.get_list_of_subcategories_from_db(category)
+        subcategory_completer = QCompleter(data, self)
+        subcategory_completer.setCaseSensitivity(Qt.CaseInsensitive)
+        subcategory_completer.setFilterMode(Qt.MatchContains)
+        self.subcategory_line.setCompleter(subcategory_completer)
 
     def save(self):
         """Saves the new total value of the account."""
