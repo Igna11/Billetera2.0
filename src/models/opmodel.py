@@ -419,52 +419,57 @@ class UserOperations(OperationsModel):
         return operations
 
     @classmethod
-    def get_unique_categories(cls, user_id: str, account_id: str) -> List[str]:
+    def get_unique_categories(cls, user_id: str) -> List[str]:
         """
-        Retrieves all the different categories exiting in a given account:
+        Retrieves all the different categories exiting in all accounts:
 
         Args:
             user_id (str): The unique identifier for the user
-            account_id (str): The unique identifier for the account
         Returns:
-            list[str]: A sorted list of strings (categories)
+            list[str]: A list of strings (categories)
         """
         conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(user_id)))
-        # conn.row_factory = sqlite3.Row
 
         cur = conn.cursor()
-        cur.execute("SELECT table_name FROM accounts WHERE account_id = ?", (account_id,))
-        table_name = cur.fetchone()[0]
-        cur.execute(f"SELECT DISTINCT category FROM {table_name};")
-        categories = cur.fetchall()
+        cur.execute("SELECT table_name FROM accounts;")
+        table_name_list = [table_name[0] for table_name in cur.fetchall()]
+        categories = []
+        for table_name in table_name_list:
+            cur.execute(f"SELECT DISTINCT category FROM {table_name};")
+            categories.extend(cur.fetchall())
         conn.close()
 
+        categories = list(set(categories))
         return categories
 
     @classmethod
-    def get_unique_subcategories(cls, user_id: str, account_id: str, category: str = None) -> List[str]:
+    def get_unique_subcategories(cls, user_id: str, category: str = None) -> List[str]:
         """
-        Retrieves all the different subcategories exiting in a given account:
+        Retrieves all the different subcategories exiting in all accounts
 
         Args:
             user_id (str): The unique identifier for the user
-            account_id (str): The unique identifier for the account
-            **kwargs (dict): like the main category to only retrieve unique values for a given category
+            category (str): main category to only retrieve unique values for a given category
         Returns:
-            list[str]: A sorted list of strings (subcategories)
+            list[str]: A list of strings (subcategories)
         """
         conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(user_id)))
-        # conn.row_factory = sqlite3.Row
 
         cur = conn.cursor()
-        cur.execute("SELECT table_name FROM accounts WHERE account_id = ?", (account_id,))
-        table_name = cur.fetchone()[0]
+        cur.execute("SELECT table_name FROM accounts;")
+        table_name_list = [table_name[0] for table_name in cur.fetchall()]
+        subcategories = []
         if category:
-            cur.execute(f"SELECT DISTINCT subcategory FROM {table_name} WHERE category = ?", (category,))
+            for table_name in table_name_list:
+                cur.execute(f"SELECT DISTINCT subcategory FROM {table_name} WHERE category = ?", (category,))
+                subcategories.extend(cur.fetchall())
         else:
-            cur.execute(f"SELECT DISTINCT subcategory FROM {table_name};")
-        subcategories = cur.fetchall()
+            for table_name in table_name_list:
+                cur.execute(f"SELECT DISTINCT subcategory FROM {table_name};")
+                subcategories.extend(cur.fetchall())
         conn.close()
+
+        subcategories = list(set(subcategories))
 
         return subcategories
 

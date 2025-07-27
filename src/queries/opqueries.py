@@ -24,25 +24,25 @@ class GetOperationByIDQuery(OperationsModel):
 class GetUniqueCategoriesByAccount(OperationsModel):
 
     user_id: str
-    account_id: str
+    account_id: Optional[str] = None
     amount: Optional[float] = None
     operation_type: Optional[str] = None
 
     def execute(self) -> List:
-        categories = UserOperations.get_unique_categories(self.user_id, self.account_id)
+        categories = UserOperations.get_unique_categories(self.user_id)
         return categories
 
 
 class GetUniqueSubcategoriesByAccount(OperationsModel):
 
     user_id: str
-    account_id: str
+    account_id: Optional[str] = None
     category: Optional[str] = None
     amount: Optional[float] = None
     operation_type: Optional[str] = None
 
     def execute(self) -> List:
-        subcategories = UserOperations.get_unique_subcategories(self.user_id, self.account_id, self.category)
+        subcategories = UserOperations.get_unique_subcategories(self.user_id, self.category)
         return subcategories
 
 
