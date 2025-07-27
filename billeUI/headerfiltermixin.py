@@ -8,13 +8,14 @@ from PyQt5 import QtWidgets, QtGui
 
 
 class HeaderFilterMixin:
-    def init_header_filter(self, table_widget, filterable_columns):
+    def init_header_filter(self, table_widget, filterable_columns, operations_list):
         """
         Initialize the filter system for headers:
         :param table_widget: QTableWidget where filters are being applied.
         :param filterable_columns: List of column indices to be filtered.
         """
         self.operation_table_widget = table_widget
+        self.operations_list = operations_list
         self.filterable_columns = filterable_columns
         self.active_filters = {}
 
@@ -22,14 +23,23 @@ class HeaderFilterMixin:
         header.sectionClicked.connect(self._handle_header_click)
 
     def _handle_header_click(self, column_index):
+        print("handler_header_click")
         if column_index not in self.filterable_columns:
             return
 
         unique_values = set()
-        for row in range(self.operation_table_widget.rowCount()):
-            item = self.operation_table_widget.item(row, column_index)
-            if item:
-                unique_values.add(item.text())
+        for operation in self.operations_list:
+            if column_index == 3:
+                unique_values.add(operation.operation_type)
+            elif column_index == 4:
+                unique_values.add(operation.category)
+            elif column_index == 5:
+                unique_values.add(operation.subcategory)
+
+        # for row in range(self.operation_table_widget.rowCount()):
+        #     item = self.operation_table_widget.item(row, column_index)
+        #     if item:
+        #         unique_values.add(item.text())
 
         current_filters = self.active_filters.get(column_index, set())
 
@@ -86,15 +96,12 @@ class HeaderFilterMixin:
         menu.close()
         self._apply_active_filters()
 
+    def set_filter_callback(self, callback):
+        self._filter_callback = callback
+
     def _apply_active_filters(self):
-        for row in range(self.operation_table_widget.rowCount()):
-            show_row = True
-            for col_idx, allowed_values in self.active_filters.items():
-                item = self.operation_table_widget.item(row, col_idx)
-                if not item or item.text() not in allowed_values:
-                    show_row = False
-                    break
-            self.operation_table_widget.setRowHidden(row, not show_row)
+        if hasattr(self, "_filter_callback") and self._filter_callback:
+            self._filter_callback()  # Llama al padre para regenerar la tabla
 
     def clear_all_filters(self):
         self.active_filters.clear()

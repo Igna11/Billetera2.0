@@ -35,6 +35,9 @@ class HeaderFilter(headerfiltermixin.HeaderFilterMixin):
 
 
 class PageLink(QLabel):
+    """
+    Label with the clickeable property to be used to change between pages of operations in an account.
+    """
 
     clicked = pyqtSignal([str])
 
@@ -47,7 +50,7 @@ class PageLink(QLabel):
         # size of the laels
         width = self.fontMetrics().boundingRect(self.text()).width()
         height = self.fontMetrics().height()
-        self.setFixedSize(width + 10, height + 2)
+        self.setFixedSize(width + 40, height + 2)
         # visibility
         self.setVisible(False)
         # stiles
@@ -95,7 +98,12 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             "Select",
         ]
 
+        self.acc_id = ""
+        self.operations_list = []
+        self.current_account_index = -1  # flag index to avoid fetching operations unnecessarily
         self.active_filters = {}
+
+        # Pagination
         self.pagination_index = 0
         self.page_label = QLabel()
         self.next_page_label = PageLink(">", parent=self)
@@ -108,31 +116,30 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.next_page_label.clicked.connect(self.next_page)
         self.prev_page_label.clicked.connect(self.prev_page)
 
-        self.acc_id: str = ""
-        self.operations_list: list = []
-        # flag index so the account operations are not fetched on every page of the list of operations
-        self.current_account_index: int = -1
+        # Pupulation of the tables with operations data
+        self.set_table_data(self.accounts_comboBox.currentIndex())
         self.accounts_comboBox.currentIndexChanged.connect(self.set_table_data)
 
-        self.sort_type = "DESC"
+        # Filters
+        self.init_header_filter(
+            self.operation_table_widget,
+            filterable_columns=[3, 4, 5],
+            operations_list=self.filter_operations(self.operations_list),
+        )
+        self.set_filter_callback(lambda: self.set_table_data(self.accounts_comboBox.currentIndex()))
 
-        self.set_table_data(self.accounts_comboBox.currentIndex())
-        self.back_button.clicked.connect(self.back)
-
-        # filters
-        self.init_header_filter(self.operation_table_widget, filterable_columns=[3, 4, 5])
-
-        self.rows_changed: set = set()
+        # Activation of the save button on changes in data
+        self.rows_changed = set()
         self.operation_table_widget.cellChanged.connect(self.cell_change)
         self.save_changes_button.clicked.connect(self.save_updated_row)
 
-        # self.status_label
-        # self.total_label
-
-        # delete button
+        # Delete operation button
         self.delete_op_button.setVisible(False)
         self.operation_table_widget.itemChanged.connect(self.handle_checkbox_change)
         self.delete_op_button.clicked.connect(self.delete_operations)
+
+        # Go back to previus window
+        self.back_button.clicked.connect(self.back)
 
     def next_page(self) -> None:
         try:
@@ -149,6 +156,10 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             self.pagination_index = 0
 
     def handle_checkbox_change(self, item):
+        """
+        Sets the delete operation button visible whenever an operation has its checkbox checked
+        and invisible when the checkbox is unchecked
+        """
         if item.column() == self.operation_table_widget.columnCount() - 1:
             any_checked = any(
                 self.operation_table_widget.item(row, self.operation_table_widget.columnCount() - 1).checkState()
@@ -162,12 +173,16 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.acc_id = self.accounts_object[index].model_dump()["account_id"]
         self.operations_list = ListOperationsQuery(
             user_id=self.widget.user_object.user_id, account_id=self.acc_id
-        ).execute(order_by_datetime=self.sort_type)
+        ).execute(order_by_datetime="DESC")
         self.current_account_index = index
 
     def set_table_data(self, index: int) -> None:
+        """
+        Populates the table with the operations of the given account. The given account is selected with the index
+        """
         # Disconnect the signal for the table so cellChanged.connect is not triggered while loading a new account
         self.operation_table_widget.blockSignals(True)
+
         # call the get_operations_data only when the account is changed and not when moving through pagination
         if self.current_account_index != index:
             self.get_operations_data(index)
@@ -178,16 +193,19 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.operation_table_widget.setHorizontalHeaderLabels(self.headers_list)
         self.total_label.setText("<b>Total: Empty</b>")
 
-        if self.operations_list:
+        filtered_operations_list = self.filter_operations(self.operations_list)
+
+        if self.operations_list and filtered_operations_list:
             pagination = 100
+            print(f"{len(self.operations_list)=}, {len(filtered_operations_list)=}")
 
             cumulative_amount = currency_format(self.operations_list[0].cumulative_amount)
             self.total_label.setText(f"<b>Total: ${cumulative_amount}</b>")
-            if len(self.operations_list) > pagination:
+            if len(filtered_operations_list) > pagination:
                 pagination_left = self.pagination_index * pagination
                 pagination_right = (self.pagination_index + 1) * pagination
-                operations_page = self.operations_list[pagination_left:pagination_right]
-                pages = ceil(len(self.operations_list) / pagination)
+                operations_page = filtered_operations_list[pagination_left:pagination_right]
+                pages = ceil(len(filtered_operations_list) / pagination)
                 current_page = self.pagination_index
 
                 if current_page < 0:
@@ -201,11 +219,11 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                 self.prev_page_label.setVisible(current_page > 0)
                 self.next_page_label.setVisible(current_page < pages - 1)
 
-                self.prev_page_label.setText("<")
-                self.next_page_label.setText(">")
+                self.prev_page_label.setText("◀ Prev")
+                self.next_page_label.setText("Next ▶")
             else:
                 self.pagination_index = 0
-                operations_page = self.operations_list
+                operations_page = filtered_operations_list
                 pages = 1
                 self.prev_page_label.setVisible(False)
                 self.next_page_label.setVisible(False)
@@ -219,7 +237,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             self.operation_table_widget.clearContents()
 
     def set_table_items(self, current_operations_page: List[UserOperations]) -> None:
-        """wrapper function to save set the info into the table"""
+        """wrapper function to set the info into the table"""
         for row_index, operation in enumerate(current_operations_page):
             items = [
                 QtWidgets.QTableWidgetItem(operation.operation_datetime.strftime(DATEFORMAT)),
@@ -257,6 +275,30 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                 item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
                 self.operation_table_widget.setItem(row_index, column_index, item)
                 self.operation_table_widget.setColumnWidth(column_index, self.column_widths[column_index])
+
+    def filter_operations(self, operations_list):
+        """Applies the active filters to the complete operations list of a given account"""
+        if not hasattr(self, "active_filters") or not self.active_filters:
+            return operations_list
+        filtered = []
+        for operation in operations_list:
+            passed = True
+            for col, vals in self.active_filters.items():
+                value = None
+                if col == 3:
+                    value = operation.operation_type
+                elif col == 4:
+                    value = operation.category
+                    if operation.category == "Compas":
+                        print(operation)
+                elif col == 5:
+                    value = operation.subcategory
+                if value not in vals:
+                    passed = False
+                    break
+            if passed:
+                filtered.append(operation)
+        return filtered
 
     def cell_change(self, row, column) -> None:
         """detects when a cell in a row has a change"""
@@ -316,6 +358,10 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.rows_changed.clear()
 
     def delete_operations(self):
+        """
+        Method to delet operations. More than one operation can be deleted at the same time. A message will
+        be desplayed before deleting the operation asking for permission for it.
+        """
         reply = QtWidgets.QMessageBox.question(
             self,
             "Confirm Delete",

@@ -6,7 +6,7 @@ import os
 import sqlite3
 import csv
 from zoneinfo import ZoneInfo
-from datetime import datetime, timezone, timedelta, UTC
+from datetime import datetime, UTC
 
 from src.models.usrmodel import User
 from src.models.accmodel import UserAccounts
