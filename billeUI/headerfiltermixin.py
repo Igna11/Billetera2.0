@@ -23,12 +23,13 @@ class HeaderFilterMixin:
         header.sectionClicked.connect(self._handle_header_click)
 
     def _handle_header_click(self, column_index):
-        print("handler_header_click")
         if column_index not in self.filterable_columns:
             return
 
         unique_values = set()
-        for operation in self.operations_list:
+        filtered_ops = self._filtered_operations_for_column(exclude_col=column_index)
+
+        for operation in filtered_ops:
             if column_index == 3:
                 unique_values.add(operation.operation_type)
             elif column_index == 4:
@@ -81,6 +82,31 @@ class HeaderFilterMixin:
 
         # Show menu
         menu.exec_(QtGui.QCursor.pos())
+
+    def _filtered_operations_for_column(self, exclude_col=None):
+        """
+        Devuelve la lista de operaciones filtradas por los filtros activos,
+        exceptuando el filtro de la columna exclude_col (si existe).
+        """
+        filtered = []
+        for op in self.operations_list:
+            ok = True
+            for col, allowed_vals in self.active_filters.items():
+                if exclude_col is not None and col == exclude_col:
+                    continue
+                val = None
+                if col == 3:
+                    val = op.operation_type
+                elif col == 4:
+                    val = op.category
+                elif col == 5:
+                    val = op.subcategory
+                if val not in allowed_vals:
+                    ok = False
+                    break
+            if ok:
+                filtered.append(op)
+        return filtered
 
     def _apply_checkbox_filters(self, menu, column_index, actions):
         selected = {val for cb, val in actions.items() if cb.isChecked()}

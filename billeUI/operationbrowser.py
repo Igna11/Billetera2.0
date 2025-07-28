@@ -22,7 +22,7 @@ from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
 
 from src.models.opmodel import UserOperations
 from src.ophandlers.deletehandler import DeletionHandler
-from src.ophandlers.operationhandler import OperationHandler
+from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
 from billeUI import UISPATH, operationscreen, currency_format, animatedlabel, headerfiltermixin
 
@@ -197,7 +197,6 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
         if self.operations_list and filtered_operations_list:
             pagination = 100
-            print(f"{len(self.operations_list)=}, {len(filtered_operations_list)=}")
 
             cumulative_amount = currency_format(self.operations_list[0].cumulative_amount)
             self.total_label.setText(f"<b>Total: ${cumulative_amount}</b>")
@@ -340,16 +339,18 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             }
 
             edited_op = OperationHandler(**row_data)
-            edited_op.set_account_total(edit_flag=True, original_operation=original_op)
             try:
+                edited_op.set_account_total(edit_flag=True, original_operation=original_op)
                 cml = edited_op.set_cumulatives(edit_flag=True, original_operation=original_op)
                 edited_op.save(cml)
                 self.status_label.setText("<font color='green'>Change saved.</font>")
                 animatedlabel.AnimatedLabel("Changes successfully saved ✅").display()
-            except ValueError:
+            except (ValueError, NegativeAccountTotalError):
                 animatedlabel.AnimatedLabel("Edition not allowed!!", message_type="error").display()
                 self.status_label.setText(
-                    "<font color='red'>Can not save this change because somewhere the cumulative amount becomes negative.</font>"
+                    """<font color='red'>
+                    Can not save this change because somewhere the cumulative amount becomes negative.
+                    </font>"""
                 )
         self.save_changes_button.setEnabled(False)
         # force update data in set_table by changing the self.current_account_index
