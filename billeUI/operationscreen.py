@@ -220,7 +220,7 @@ class OperationScreen(QMainWindow):
         self.central_VR_Layout.addWidget(self.chart_view)
         # reset the chart mode in case the period mode was activated
         self.chart_mode = "month"
-        return 0
+        #return 0
 
     def current_month_chart(self) -> None:
         """
