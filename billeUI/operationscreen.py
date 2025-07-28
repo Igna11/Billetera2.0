@@ -76,14 +76,16 @@ class OperationScreen(QMainWindow):
         self.custom_initial_date = None
         self.custom_final_date = None
         self.username_label.setText(f"<b>Hello {self.widget.user_object.first_name}!</b>")
+        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
+        self.widget.__setattr__("account_objects", acc_list)
 
     def setup_buttons(self) -> None:
         """Sets the signals for the buttons of the window."""
         buttons_function_pairs = [
-            (self.income_button, self.pre_income),
-            (self.expense_button, self.pre_expense),
-            (self.transfer_button, self.pre_transfer),
-            (self.readjustment_button, self.pre_readjustment),
+            (self.income_button, self.income),
+            (self.expense_button, self.expense),
+            (self.transfer_button, self.transfer),
+            (self.readjustment_button, self.readjustment),
             (self.create_new_account_button, self.create_account),
             (self.back_button, self.back),
             (self.custom_period_button, self.custom_date_range),
@@ -127,37 +129,29 @@ class OperationScreen(QMainWindow):
         currencies_list.sort()
         return currencies_list
 
-    def pre_operation(self, operation) -> None:
-        """Sets the UIs according to the operation value"""
-        self.operation = operation
-        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
-        self.widget.__setattr__("account_objects", acc_list)
-        if operation == "income":
-            operation_inputs = incomeexpensescreen.IncomeExpenseScreen(self.operation, widget=self.widget)
-        elif operation == "expense":
-            operation_inputs = incomeexpensescreen.IncomeExpenseScreen(self.operation, widget=self.widget)
-        elif operation == "transfer":
-            operation_inputs = transferscreen.TransferScreen(self.operation, widget=self.widget)
-        elif operation == "readjustment":
-            operation_inputs = readjustmentscreen.ReadjustmentScreen(self.operation, widget=self.widget)
-        self.widget.addWidget(operation_inputs)
+    def income(self) -> None:
+        """Takes the user to the income screen"""
+        income_window = incomeexpensescreen.IncomeExpenseScreen("income", widget=self.widget)
+        self.widget.addWidget(income_window)
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
-    def pre_income(self) -> None:
-        """Takes the user to the income/expense screen and sets the flag operation to income"""
-        self.pre_operation("income")
+    def expense(self) -> None:
+        """Takes the user to the expense screen"""
+        expense_window = incomeexpensescreen.IncomeExpenseScreen("expense", widget=self.widget)
+        self.widget.addWidget(expense_window)
+        self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
-    def pre_expense(self) -> None:
-        """Takes the user to the income/expense screen and sets the flag operation to expense"""
-        self.pre_operation("expense")
+    def transfer(self) -> None:
+        """Takes the user to the transfer screen"""
+        transfer_window = transferscreen.TransferScreen(widget=self.widget)
+        self.widget.addWidget(transfer_window)
+        self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
-    def pre_transfer(self) -> None:
-        """Takes the user to the transfer screen and sets the flag operation to transfer"""
-        self.pre_operation("transfer")
-
-    def pre_readjustment(self) -> None:
-        """Takes the user to the readjustment screen and sets the flag operation to readjustment"""
-        self.pre_operation("readjustment")
+    def readjustment(self) -> None:
+        """Takes the user to the readjustment screen"""
+        readjustment_window = readjustmentscreen.ReadjustmentScreen(widget=self.widget)
+        self.widget.addWidget(readjustment_window)
+        self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
     def create_account(self) -> None:
         """Takes the user to the CreateAccount screen"""
@@ -166,11 +160,13 @@ class OperationScreen(QMainWindow):
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
     def browse_operations(self) -> None:
+        """Takes the user to the browse operation screen"""
         browse_operation_window = operationbrowser.OperationBrowser(widget=self.widget)
         self.widget.addWidget(browse_operation_window)
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
     def browse_accounts(self) -> None:
+        """Takes the user to the browse account screen"""
         browse_account_window = accountbrowser.AccountBrowser(widget=self.widget)
         self.widget.addWidget(browse_account_window)
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
