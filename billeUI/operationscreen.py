@@ -44,7 +44,7 @@ class OperationScreen(QMainWindow):
         self.setup_buttons()
         self.disable_operation_buttons()
 
-        # transition for accounts
+        # Accounts information dashlet
         self.set_account_dashlet_widget()
 
         # Modifiers
@@ -58,27 +58,6 @@ class OperationScreen(QMainWindow):
         self.currency_combobox.currentIndexChanged.connect(self.set_account_dashlet_widget)
         # Add the chart_view to the central_VR_layout
         self.central_VR_Layout.addWidget(self.chart_view)
-
-    def _get_currency_list(self) -> List[str]:
-        """
-        Generate the list of used currencies. This method does not filter by active because the currency
-        is a parameter needed to generate the charts to be desplayed even though all accounts are inactive
-        """
-        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
-        currencies_list = list({account.account_currency for account in acc_list})
-        currencies_list.sort()
-        return currencies_list
-
-    def set_account_dashlet_widget(self) -> None:
-        """Sets the data to the dashlet of the accounts totals"""
-        new_data = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(currency=self.currency, active=1)
-        if hasattr(self, "account_dashlet") and self.account_dashlet is not None:
-            self.account_dashlet.update_data(new_data)
-        else:
-            self.account_dashlet = accounts_dashlet_widget.AccountDashletWidget(new_data)
-            self.acc_totals_widget = QStackedWidget()
-            self.acc_totals_widget.addWidget(self.account_dashlet)
-            self.central_VL_Layout.insertWidget(0, self.acc_totals_widget)
 
     def setup_ui(self) -> None:
         """Loads the ui file"""
@@ -126,6 +105,27 @@ class OperationScreen(QMainWindow):
             self.expense_button.setEnabled(False)
             self.transfer_button.setEnabled(False)
             self.readjustment_button.setEnabled(False)
+
+    def set_account_dashlet_widget(self) -> None:
+        """Sets the data to the dashlet of the accounts totals"""
+        new_data = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(currency=self.currency, active=1)
+        if hasattr(self, "account_dashlet") and self.account_dashlet is not None:
+            self.account_dashlet.update_data(new_data)
+        else:
+            self.account_dashlet = accounts_dashlet_widget.AccountDashletWidget(new_data)
+            self.acc_totals_widget = QStackedWidget()
+            self.acc_totals_widget.addWidget(self.account_dashlet)
+            self.central_VL_Layout.insertWidget(0, self.acc_totals_widget)
+
+    def _get_currency_list(self) -> List[str]:
+        """
+        Generate the list of used currencies. This method does not filter by active because the currency
+        is a parameter needed to generate the charts to be desplayed even though all accounts are inactive
+        """
+        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        currencies_list = list({account.account_currency for account in acc_list})
+        currencies_list.sort()
+        return currencies_list
 
     def pre_operation(self, operation) -> None:
         """Sets the UIs according to the operation value"""
