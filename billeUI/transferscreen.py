@@ -30,12 +30,11 @@ class TransferScreen(QMainWindow):
     Screen where the user can make transfers between accounts
     """
 
-    def __init__(self, operation_flag: str, parent=None, widget=None):
+    def __init__(self, parent=None, widget=None):
         super(TransferScreen, self).__init__(parent)
         operation_transfer_screen = os.path.join(UISPATH, "operation_transfer_screen.ui")
         loadUi(operation_transfer_screen, self)
         self.widget = widget
-        self.operation_flag = operation_flag
         self.acc_object_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
         self.acc_item_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.acc_object_list]
 

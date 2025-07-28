@@ -24,7 +24,7 @@ class ReadjustmentScreen(QMainWindow):
     Screen where the user can make readjustment in accounts
     """
 
-    def __init__(self, operation_flag: str, parent=None, widget=None):
+    def __init__(self, parent=None, widget=None):
         super(ReadjustmentScreen, self).__init__(parent)
         operation_readjustment_screen = os.path.join(UISPATH, "operation_readjustment_screen.ui")
         loadUi(operation_readjustment_screen, self)
