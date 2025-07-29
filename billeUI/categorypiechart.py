@@ -159,7 +159,10 @@ class CategoricalPieChart(QtChart.QChart):
                     )
                     slice_inner.hovered.connect(lambda is_hovered, slice_=slice_inner: slice_.setExploded(is_hovered))
                     slice_inner.setExplodeDistanceFactor(0.05)
-                    label = f"<p align='center' style='color:black'>{subgroup['subcategory']}<br><b>${currency_format(subgroup['total'])}</b></p>"
+                    label = f"""
+                        <p align='center' style='color:black'>{subgroup['subcategory']}<br>
+                        <b>${currency_format(subgroup['total'])}</b></p>
+                        """
                     slice_inner.setLabel(label)
                     slice_inner.setLabelFont(font)
                     self.series_inner.append(slice_inner)
