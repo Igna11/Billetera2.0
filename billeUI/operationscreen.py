@@ -71,11 +71,12 @@ class OperationScreen(QMainWindow):
         # variables for the pie chart
         self.chart_mode = "month"
         self.chart_type = "expense"
-        #self.chart_period = "month"
+        # self.chart_period = "month"
         self.curr_datetime = datetime.now()
         self.selected_datetime = self.curr_datetime
         self.custom_initial_date = None
         self.custom_final_date = None
+        self.period_dict = {}
 
         self.currency_combobox.addItems(self.get_currency_list())
         self.currency = self.currency_combobox.currentText()
@@ -180,7 +181,10 @@ class OperationScreen(QMainWindow):
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
     def current_month_chart(self):
-        """generates a pie chart of the current month"""
+        """generates a pie chart of the current month and resets all chart data variables"""
+        # set the month in the selected datetime to one more mont
+        self.selected_datetime = self.curr_datetime
+        self.chart_type = "expense"
         data_inner, data_outer = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
             chart_mode="month",
@@ -188,28 +192,145 @@ class OperationScreen(QMainWindow):
             time_period=self.curr_datetime,
             currency=self.currency,
         )
-        self.chart.generate_chart(data_inner, data_outer,self.chart_type)
-        pass
+        chart_title = piechartfunctions.update_n_format_chart_title(
+            user_id=self.widget.user_object.user_id,
+            currency=self.currency,
+            time_period=self.selected_datetime,
+            chart_mode="month",
+            chart_type=self.chart_type,
+        )
+        self.chart.setTitle(chart_title)
+        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
 
     def next_month_chart(self):
         """Changes to a pie chart for the next month"""
-        pass
+        self.selected_datetime = piechartfunctions.get_next_month(self.selected_datetime)
+        data_inner, data_outer = piechartfunctions.load_data(
+            user_id=self.widget.user_object.user_id,
+            chart_mode="month",
+            chart_type=self.chart_type,
+            time_period=self.selected_datetime,
+            currency=self.currency,
+        )
+        chart_title = piechartfunctions.update_n_format_chart_title(
+            user_id=self.widget.user_object.user_id,
+            currency=self.currency,
+            time_period=self.selected_datetime,
+            chart_mode="month",
+            chart_type=self.chart_type,
+        )
+        self.chart.setTitle(chart_title)
+        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
 
     def previous_month_chart(self):
         """Changes to a pie chart for the previus month"""
-        pass
+        self.selected_datetime = piechartfunctions.get_prev_month(self.selected_datetime)
+        data_inner, data_outer = piechartfunctions.load_data(
+            user_id=self.widget.user_object.user_id,
+            chart_mode="month",
+            chart_type=self.chart_type,
+            time_period=self.selected_datetime,
+            currency=self.currency,
+        )
+        chart_title = piechartfunctions.update_n_format_chart_title(
+            user_id=self.widget.user_object.user_id,
+            currency=self.currency,
+            time_period=self.selected_datetime,
+            chart_mode="month",
+            chart_type=self.chart_type,
+        )
+        self.chart.setTitle(chart_title)
+        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
 
     def switch_chart_type(self):
         """Changes the pie chart from income to expenses and viceversa"""
-        pass
+        # if custom period is being used, switch with custom period
+        if self.period_dict:
+            stime = self.period_dict
+        else:
+            stime = self.selected_datetime
+        # switch income<->expense and viceversa
+        if self.chart_type == "income":
+            self.chart_type = "expense"
+        elif self.chart_type == "expense":
+            self.chart_type = "income"
+        data_inner, data_outer = piechartfunctions.load_data(
+            user_id=self.widget.user_object.user_id,
+            chart_mode=self.chart_mode,
+            chart_type=self.chart_type,
+            time_period=stime,
+            currency=self.currency,
+        )
+        chart_title = piechartfunctions.update_n_format_chart_title(
+            user_id=self.widget.user_object.user_id,
+            currency=self.currency,
+            time_period=stime,
+            chart_mode=self.chart_mode,
+            chart_type=self.chart_type,
+        )
+        self.chart.setTitle(chart_title)
+        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
 
     def custom_date_range_chart(self):
-        """Generates a pie chart for custom time intervals"""
-        pass
+        """
+        Generates a new piechart with selected time period in the calendar widget. First it opens up
+        a calendar widget to select the 2 dates that conform the desired period of time. Then uses
+        it to gather the information needed for the pie chart.
+        """
+        calendar_dialog = calendardialog.CalendarDialog()
+        calendar_dialog.select_button.clicked.connect(calendar_dialog.get_date_range)
+        calendar_dialog.exec_()
+
+        self.chart_mode = "period"
+        self.custom_initial_date = calendar_dialog.initial_d
+        self.custom_final_date = calendar_dialog.final_d
+
+        if self.custom_initial_date and self.custom_final_date:
+            self.period_dict = {
+                "initial": str(self.custom_initial_date),
+                "final": str(self.custom_final_date),
+            }
+            data_inner, data_outer = piechartfunctions.load_data(
+                user_id=self.widget.user_object.user_id,
+                chart_mode=self.chart_mode,
+                chart_type=self.chart_type,
+                time_period=self.period_dict,
+                currency=self.currency,
+            )
+            chart_title = piechartfunctions.update_n_format_chart_title(
+                user_id=self.widget.user_object.user_id,
+                currency=self.currency,
+                time_period=self.period_dict,
+                chart_mode=self.chart_mode,
+                chart_type=self.chart_type,
+            )
+            self.chart.setTitle(chart_title)
+            self.chart.generate_chart(data_inner, data_outer, self.chart_type)
 
     def change_currency_chart(self):
-        """Change the currency og the pie chart"""
-        pass
+        """Change the currency of the pie chart"""
+        if self.chart_mode == "period" and self.period_dict:
+            stime = self.period_dict
+        else:
+            stime = self.selected_datetime
+        self.currency = self.currency_combobox.currentText()
+
+        data_inner, data_outer = piechartfunctions.load_data(
+            user_id=self.widget.user_object.user_id,
+            chart_mode=self.chart_mode,
+            chart_type=self.chart_type,
+            time_period=stime,
+            currency=self.currency,
+        )
+        chart_title = piechartfunctions.update_n_format_chart_title(
+            user_id=self.widget.user_object.user_id,
+            currency=self.currency,
+            time_period=stime,
+            chart_mode=self.chart_mode,
+            chart_type=self.chart_type,
+        )
+        self.chart.setTitle(chart_title)
+        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
 
     def back(self) -> None:
         """Returns to the LoginScreen Menu"""

@@ -116,9 +116,9 @@ class CategoricalPieChart(QtChart.QChart):
         self.add_slices(data_inner, data_outer, chart_type)
         self.update_labels()
         # Add the chart_view to the central_VR_layout
-        #self.central_VR_Layout.addWidget(self.chart_view)
+        # self.central_VR_Layout.addWidget(self.chart_view)
         # reset the chart mode in case the period mode was activated
-        self.chart_mode = "month"
+        # self.chart_mode = "month"
 
     def add_slices(self, data_inner: List[Dict], data_outer: List[Dict], chart_type: str = "expense") -> None:
         """
