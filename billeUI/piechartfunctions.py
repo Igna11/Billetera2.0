@@ -99,7 +99,8 @@ def load_data(self, user_id: str, currency: str, time_period: datetime, chart_mo
             chart_mode (str): Can be 'month' or 'period', where period is a custom period selected by the user.
             time_period (datetime.datetime): Used to generate the month interval for the chart
             chart_type (str): Can be "income" or "expense"
-            ci_date (custom initial date - 
+            ci_date (custom initial date - str): initial date to be used for create a custom pie chart.
+            cf_date (custom final date - str): final date to be used for create a custom pie chart.
         Returns:
             data_outer: category data
             data_inner: subcategory data
