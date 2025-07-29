@@ -26,6 +26,7 @@ from billeUI import (
     accounts_dashlet_widget,
     operationbrowser,
     accountbrowser,
+    piechartfunctions,
 )
 
 from src.queries.accqueries import ListAccountsQuery
@@ -67,14 +68,17 @@ class OperationScreen(QMainWindow):
     def initialize_variables(self) -> None:
         """Set up the initial variables"""
         self.operation = None
+        # variables for the pie chart
         self.chart_mode = "month"
         self.chart_type = "expense"
-        self.currency_combobox.addItems(self.get_currency_list())
-        self.currency = self.currency_combobox.currentText()
+        #self.chart_period = "month"
         self.curr_datetime = datetime.now()
         self.selected_datetime = self.curr_datetime
         self.custom_initial_date = None
         self.custom_final_date = None
+
+        self.currency_combobox.addItems(self.get_currency_list())
+        self.currency = self.currency_combobox.currentText()
         self.username_label.setText(f"<b>Hello {self.widget.user_object.first_name}!</b>")
         acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
         self.widget.__setattr__("account_objects", acc_list)
@@ -82,17 +86,21 @@ class OperationScreen(QMainWindow):
     def setup_buttons(self) -> None:
         """Sets the signals for the buttons of the window."""
         buttons_function_pairs = [
+            # operations buttons
             (self.income_button, self.income),
             (self.expense_button, self.expense),
             (self.transfer_button, self.transfer),
             (self.readjustment_button, self.readjustment),
+            # account creation
             (self.create_new_account_button, self.create_account),
             (self.back_button, self.back),
-            (self.custom_period_button, self.custom_date_range),
+            # pie chart buttons
+            (self.custom_period_button, self.custom_date_range_chart),
             (self.switch_type_button, self.switch_chart_type),
             (self.previous_month_button, self.previous_month_chart),
             (self.next_month_button, self.next_month_chart),
             (self.reset_month_button, self.current_month_chart),
+            # browsing accounts and operations buttons
             (self.browse_account_button, self.browse_operations),
             (self.account_button, self.browse_accounts),
         ]
@@ -170,6 +178,38 @@ class OperationScreen(QMainWindow):
         browse_account_window = accountbrowser.AccountBrowser(widget=self.widget)
         self.widget.addWidget(browse_account_window)
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
+
+    def current_month_chart(self):
+        """generates a pie chart of the current month"""
+        data_inner, data_outer = piechartfunctions.load_data(
+            user_id=self.widget.user_object.user_id,
+            chart_mode="month",
+            chart_type=self.chart_type,
+            time_period=self.curr_datetime,
+            currency=self.currency,
+        )
+        self.chart.generate_chart(data_inner, data_outer,self.chart_type)
+        pass
+
+    def next_month_chart(self):
+        """Changes to a pie chart for the next month"""
+        pass
+
+    def previous_month_chart(self):
+        """Changes to a pie chart for the previus month"""
+        pass
+
+    def switch_chart_type(self):
+        """Changes the pie chart from income to expenses and viceversa"""
+        pass
+
+    def custom_date_range_chart(self):
+        """Generates a pie chart for custom time intervals"""
+        pass
+
+    def change_currency_chart(self):
+        """Change the currency og the pie chart"""
+        pass
 
     def back(self) -> None:
         """Returns to the LoginScreen Menu"""

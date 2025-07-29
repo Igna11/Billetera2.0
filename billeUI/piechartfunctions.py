@@ -2,8 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 created on 28/07/2025
+Auxiliary functions to generate the PieCharts
 """
-def _get_month_interval(self, year: int, month: int) -> Tuple[datetime, datetime]:
+from typing import Tuple
+from datetime import datetime, UTC
+
+from src.datahandler.datahandler import AccountDataAnalyzer
+
+def _get_month_interval(year: int, month: int) -> Tuple[datetime, datetime]:
     """
     Given a year and a month, it returns two complete datetime objects with the first day of two consecutives months.
     Example:
@@ -25,7 +31,10 @@ def _get_month_interval(self, year: int, month: int) -> Tuple[datetime, datetime
         to_datetime = datetime(year, month + 1, 1, tzinfo=UTC)
     return from_datetime, to_datetime
 
-def load_data(self, user_id: str, currency: str, time_period: datetime, chart_mode: str, chart_type: str = "expense") -> tuple:
+
+def load_data(
+    user_id: str, currency: str, time_period: datetime, chart_mode: str, chart_type: str = "expense"
+) -> tuple:
     """
     Loads the raw data in the given currency and for the given filters in order to be passed to the chart.
     Args:
@@ -40,7 +49,7 @@ def load_data(self, user_id: str, currency: str, time_period: datetime, chart_mo
     """
     if chart_mode == "month":
         # set the time frame
-        from_datetime, to_datetime = self._get_month_interval(time_period.year, time_period.month)
+        from_datetime, to_datetime = _get_month_interval(time_period.year, time_period.month)
 
         data_outer = AccountDataAnalyzer.group_operations(
             user_id=user_id,

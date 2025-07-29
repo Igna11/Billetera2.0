@@ -51,6 +51,75 @@ class CategoricalPieChart(QtChart.QChart):
         for pie_slice in self.series_inner.slices():
             self.series_inner.take(pie_slice)
 
+    def update_labels(self):
+        """
+        Updates the labels of the outer slices:
+            If the percentage of a given slice is less or equal than 5%
+            then the label is invisible unless the user hovers over the
+            slcie.
+            If the percentage of a given slice is greater than 5%, then
+            the label is visible all the time.
+        """
+        for pie_slice in self.series_outer.slices():
+            font = QFont()
+            font.setPointSize(8)
+            slice_lbl = pie_slice.label()
+            slice_val = pie_slice.value()
+            pie_slice.setLabelFont(font)
+            label = f"<p align='center' style='color:black'>{slice_lbl}<br><b>${currency_format(slice_val)}</b></p>"
+            if pie_slice.percentage() > 0.05:
+                pie_slice.setLabelVisible()
+            elif pie_slice.percentage() <= 0.05:
+                pie_slice.hovered.connect(lambda is_hovered, slice_=pie_slice: slice_.setLabelVisible(is_hovered))
+            pie_slice.setLabel(label)
+
+    def lighten_color(self, color: QColor, factor: float) -> QColor:
+        """
+        Devuelve un QColor aclarado por un factor (0.0 - 1.0).
+        factor cercano a 1 = muy claro, cercano a 0 = color original
+        """
+        r = int(color.red() + (255 - color.red()) * factor)
+        g = int(color.green() + (255 - color.green()) * factor)
+        b = int(color.blue() + (255 - color.blue()) * factor)
+        return QColor(r, g, b)
+
+    def slices_colorsHSV(
+        self, n: int, saturation: int = 180, value: int = 230, chart_type: str = "expense"
+    ) -> List[QColor]:
+        if n == 0:
+            n = 1
+        if chart_type == "expense":
+            start_hue, end_hue = 0, 80
+        elif chart_type == "income":
+            start_hue, end_hue = 110, 280
+        else:
+            start_hue, end_hue = 0, 360
+
+        color_step = (end_hue - start_hue) / n
+        colors = [QColor.fromHsv(int(start_hue + i * color_step), saturation, value) for i in range(n)]
+
+        return colors
+
+    def generate_chart(self, data_inner: List[Dict], data_outer: List[Dict], chart_type: str) -> None:
+        """
+        Add the slices to the pie chart usign the data_outer and the data_inner dictionaries
+        Args:
+            data_inner (List[Dict]): List of dictionaries of the form
+            [{"category": "House", "subcategory": "Maintenance", "total": 2032}, {...}, ..., {...}]
+            data_outer (List[Dict]): idem data inner but without subcategories.
+            chart_type (str): 'income' or 'expense', so warm colors can be used to expenses and cold ones for incomes.
+        Returns:
+            None
+        """
+
+        self.clear_slices()
+        self.add_slices(data_inner, data_outer, chart_type)
+        self.update_labels()
+        # Add the chart_view to the central_VR_layout
+        #self.central_VR_Layout.addWidget(self.chart_view)
+        # reset the chart mode in case the period mode was activated
+        self.chart_mode = "month"
+
     def add_slices(self, data_inner: List[Dict], data_outer: List[Dict], chart_type: str = "expense") -> None:
         """
         Loops through the data to the create each slice of the inner and
@@ -100,52 +169,3 @@ class CategoricalPieChart(QtChart.QChart):
                     slice_inner.setLabel(label)
                     slice_inner.setLabelFont(font)
                     self.series_inner.append(slice_inner)
-
-    def update_labels(self):
-        """
-        Updates the labels of the outer slices:
-            If the percentage of a given slice is less or equal than 5%
-            then the label is invisible unless the user hovers over the
-            slcie.
-            If the percentage of a given slice is greater than 5%, then
-            the label is visible all the time.
-        """
-        for pie_slice in self.series_outer.slices():
-            font = QFont()
-            font.setPointSize(8)
-            slice_lbl = pie_slice.label()
-            slice_val = pie_slice.value()
-            pie_slice.setLabelFont(font)
-            label = f"<p align='center' style='color:black'>{slice_lbl}<br><b>${currency_format(slice_val)}</b></p>"
-            if pie_slice.percentage() > 0.05:
-                pie_slice.setLabelVisible()
-            elif pie_slice.percentage() <= 0.05:
-                pie_slice.hovered.connect(lambda is_hovered, slice_=pie_slice: slice_.setLabelVisible(is_hovered))
-            pie_slice.setLabel(label)
-
-    def lighten_color(self, color: QColor, factor: float) -> QColor:
-        """
-        Devuelve un QColor aclarado por un factor (0.0 - 1.0).
-        factor cercano a 1 = muy claro, cercano a 0 = color original
-        """
-        r = int(color.red() + (255 - color.red()) * factor)
-        g = int(color.green() + (255 - color.green()) * factor)
-        b = int(color.blue() + (255 - color.blue()) * factor)
-        return QColor(r, g, b)
-
-    def slices_colorsHSV(
-        self, n: int, saturation: int = 180, value: int = 230, chart_type: str = "expense"
-    ) -> List[QColor]:
-        if n == 0:
-            n = 1
-        if chart_type == "expense":
-            start_hue, end_hue = 0, 80
-        elif chart_type == "income":
-            start_hue, end_hue = 110, 280
-        else:
-            start_hue, end_hue = 0, 360
-
-        color_step = (end_hue - start_hue) / n
-        colors = [QColor.fromHsv(int(start_hue + i * color_step), saturation, value) for i in range(n)]
-
-        return colors
