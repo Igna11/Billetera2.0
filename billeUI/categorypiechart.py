@@ -4,13 +4,11 @@
 created on 06/04/2023
 updated on 06/2025
 """
-from datetime import datetime, UTC
-from typing import List, Tuple, Dict
+from typing import List, Dict
 
 from PyQt5 import QtChart
 from PyQt5.QtGui import QFont, QColor
 
-from src.datahandler.datahandler import AccountDataAnalyzer
 from billeUI import currency_format
 
 

@@ -6,7 +6,7 @@ updated on 21/06/2026
 """
 import os
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from PyQt5 import QtCore
 from PyQt5.uic import loadUi
