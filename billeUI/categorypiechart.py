@@ -16,8 +16,8 @@ class CategoricalPieChart(QtChart.QChart):
     """
     class to create pie charts with expenses and incomes with slices for categories
     and subcategories.
-    data_inner: a pandas data frame with data to fill the inner pie chart
-    data_outer: a pandas data frame with data to fill the outer pie chart
+    data_inner: a dictionary with data of categories and subcategories with the totals
+    data_outer: a dictionary with data of categories and with the totals
     period: a dictionary containing day, month ander to define the period (month) of the data to be displayed
     """
 

@@ -52,7 +52,7 @@ class OperationScreen(QMainWindow):
         self.chart = categorypiechart.CategoricalPieChart()
         self.chart.setBackgroundVisible(False)
         self.chart_view = QChartView(self.chart)
-        self.current_month_chart() # generates the chart when opening this window
+        self.current_month_chart()  # generates the chart when opening this window
         self.chart_view.setRenderHint(QPainter.Antialiasing)
 
         self.currency_combobox.currentIndexChanged.connect(self.change_currency_chart)
