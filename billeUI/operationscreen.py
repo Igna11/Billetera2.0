@@ -281,9 +281,12 @@ class OperationScreen(QMainWindow):
         calendar_dialog.select_button.clicked.connect(calendar_dialog.get_date_range)
         calendar_dialog.exec_()
 
-        self.chart_mode = "period"
         self.custom_initial_date = calendar_dialog.initial_d
         self.custom_final_date = calendar_dialog.final_d
+        if self.custom_initial_date and self.custom_final_date:
+            self.chart_mode = "period"
+        else:
+            return
 
         if self.custom_initial_date and self.custom_final_date:
             self.period_dict = {
