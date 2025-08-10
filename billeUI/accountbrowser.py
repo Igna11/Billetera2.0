@@ -236,8 +236,6 @@ class AccountBrowser(QMainWindow):
             self.account_changed.discard(account_id)
         self.save_changes_button.setEnabled(len(self.account_changed) > 0)
 
-        print(self.account_changed)
-
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""
         operation_screen = operationscreen.OperationScreen(widget=self.widget)
