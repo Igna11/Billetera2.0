@@ -5,12 +5,14 @@ Created on 15/07/2025 21:17
 
 @author: igna
 """
+
 import os
+import sqlite3
 
 from PyQt5 import QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QLabel,
     QFrame,
@@ -24,7 +26,7 @@ from PyQt5.QtWidgets import (
     QRadioButton,
 )
 
-from src.models.accmodel import UserAccounts
+from src.models.accmodel import UserAccounts, InvalidAccountNameError
 from src.queries.accqueries import ListAccountsQuery, GetAccountByIDQuery
 from src.commands.acccommands import EditUsersAccountCommand, DeleteUsersAccountCommand
 
@@ -33,12 +35,16 @@ from billeUI import UISPATH, ICONSPATH
 
 
 class AccountRow(QWidget):
+
+    account_modified = pyqtSignal(str, str, bool)
+
     def __init__(self, account: UserAccounts, parent=None):
         super().__init__(parent)
         # Needed for the hover effect
         self.account = account
+        self.account_id = account.account_id
         self.account_name = account.account_name
-        self.account_changed = set()
+        self.new_acc_name = ""
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_Hover, True)
         self.frame = QFrame(self)
@@ -68,7 +74,7 @@ class AccountRow(QWidget):
         self.name_line_edit.editingFinished.connect(self.show_qlabel)
         self.balance_label = QLabel(f"{currency_format(account.account_total)} {account.account_currency}")
         self.balance_label.setFont(font)
-        
+
         # Buttons and Icons
         self.edit_btn = QPushButton()
         self.edit_btn.setIcon(QIcon(os.path.join(ICONSPATH, "edit.svg")))
@@ -113,7 +119,7 @@ class AccountRow(QWidget):
         outer_layout = QVBoxLayout(self)
         outer_layout.addWidget(self.frame)
         outer_layout.setContentsMargins(0, 0, 0, 0)
-    
+
     def enable_edit_mode(self) -> None:
         """Enables the edition of the account name"""
         self.name_label.hide()
@@ -121,16 +127,16 @@ class AccountRow(QWidget):
         self.name_line_edit.setFocus()
         self.name_line_edit.selectAll()
 
-
     def show_qlabel(self) -> None:
         """Resets the label with the new values"""
-        new_acc_name = self.name_line_edit.text().strip()
-        self.name_label.setText(new_acc_name)
-        if new_acc_name != self.account_name:
+        self.new_acc_name = self.name_line_edit.text().strip()
+        self.name_label.setText(self.new_acc_name)
+        if self.new_acc_name != self.account_name:
             self.name_label.setStyleSheet("color: orange; font-weight: bold; font-style: italic;")
-            self.account_changed.add(self.account_name)
+            self.account_modified.emit(self.account_id, self.new_acc_name, True)
         else:
             self.name_label.setStyleSheet("color: black; font-weight: bold;")
+            self.account_modified.emit(self.account_id, self.account_name, False)
         self.name_line_edit.hide()
         self.name_label.show()
 
@@ -183,6 +189,14 @@ class AccountBrowser(QMainWindow):
         loadUi(account_browser_screen, self)
         self.widget = widget
 
+        self.user_id = self.widget.account_objects[0].user_id
+
+        self.account_changed = set()
+        self.acc_row_list = []
+
+        self.save_changes_button.setEnabled(False)
+        self.save_changes_button.clicked.connect(self.save_account_changes)
+
         self.accounts_object = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
 
         self.back_button.clicked.connect(self.back)
@@ -191,11 +205,38 @@ class AccountBrowser(QMainWindow):
         self.scroll_layout = self.scroll_content.layout()
 
         for account in self.accounts_object:
-            self.add_account(account)
+            row = self.add_account(account)
+            self.acc_row_list.append(row)
 
-    def add_account(self, account: UserAccounts):
+    def save_account_changes(self) -> None:
+        """loops through all acc_ids in the account_changed set and saves the changes into the db"""
+        row_to_be_saved = [row for row in self.acc_row_list if row.account_id in self.account_changed]
+        for row in row_to_be_saved:
+            try:
+                EditUsersAccountCommand(
+                    user_id=self.user_id, account_id=row.account_id, account_name=row.new_acc_name
+                ).execute()
+                row.name_label.setStyleSheet("color: black; font-weight: bold;")
+                animatedlabel.AnimatedLabel("Changes saved! ✅", message_type="success").display()
+            except sqlite3.OperationalError:
+                animatedlabel.AnimatedLabel("Duplicated name!", message_type="error").display()
+            except InvalidAccountNameError:
+                animatedlabel.AnimatedLabel("Invalid name!", message_type="error").display()
+
+    def add_account(self, account: UserAccounts) -> AccountRow:
         row = AccountRow(account)
+        row.account_modified.connect(self.handle_account_modified)
         self.scroll_layout.addWidget(row)
+        return row
+
+    def handle_account_modified(self, account_id: str, new_acc_name: str, is_modified: bool) -> None:
+        if is_modified:
+            self.account_changed.add(account_id)
+        else:
+            self.account_changed.discard(account_id)
+        self.save_changes_button.setEnabled(len(self.account_changed) > 0)
+
+        print(self.account_changed)
 
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""
