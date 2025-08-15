@@ -98,26 +98,6 @@ class CategoricalPieChart(QtChart.QChart):
 
         return colors
 
-    def generate_chart(self, data_inner: List[Dict], data_outer: List[Dict], chart_type: str) -> None:
-        """
-        Add the slices to the pie chart usign the data_outer and the data_inner dictionaries
-        Args:
-            data_inner (List[Dict]): List of dictionaries of the form
-            [{"category": "House", "subcategory": "Maintenance", "total": 2032}, {...}, ..., {...}]
-            data_outer (List[Dict]): idem data inner but without subcategories.
-            chart_type (str): 'income' or 'expense', so warm colors can be used to expenses and cold ones for incomes.
-        Returns:
-            None
-        """
-
-        self.clear_slices()
-        self.add_slices(data_inner, data_outer, chart_type)
-        self.update_labels()
-        # Add the chart_view to the central_VR_layout
-        # self.central_VR_Layout.addWidget(self.chart_view)
-        # reset the chart mode in case the period mode was activated
-        # self.chart_mode = "month"
-
     def add_slices(self, data_inner: List[Dict], data_outer: List[Dict], chart_type: str = "expense") -> None:
         """
         Loops through the data to the create each slice of the inner and
@@ -167,3 +147,19 @@ class CategoricalPieChart(QtChart.QChart):
                     slice_inner.setLabel(label)
                     slice_inner.setLabelFont(font)
                     self.series_inner.append(slice_inner)
+
+    def generate_chart(self, data_inner: List[Dict], data_outer: List[Dict], chart_type: str) -> None:
+        """
+        Add the slices to the pie chart usign the data_outer and the data_inner dictionaries
+        Args:
+            data_inner (List[Dict]): List of dictionaries of the form
+            [{"category": "House", "subcategory": "Maintenance", "total": 2032}, {...}, ..., {...}]
+            data_outer (List[Dict]): idem data inner but without subcategories.
+            chart_type (str): 'income' or 'expense', so warm colors can be used to expenses and cold ones for incomes.
+        Returns:
+            None
+        """
+
+        self.clear_slices()
+        self.add_slices(data_inner, data_outer, chart_type)
+        self.update_labels()

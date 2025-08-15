@@ -184,10 +184,12 @@ class OperationScreen(QMainWindow):
         """generates a pie chart of the current month and resets all chart data variables"""
         # set the month in the selected datetime to one more mont
         self.selected_datetime = self.curr_datetime
+        self.period_dict = {}  # resets de period dict to empty
+        self.chart_mode = "month"  # resets the chart mode to month
         self.chart_type = "expense"
         data_inner, data_outer = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
-            chart_mode="month",
+            chart_mode=self.chart_mode,
             chart_type=self.chart_type,
             time_period=self.curr_datetime,
             currency=self.currency,
@@ -196,7 +198,7 @@ class OperationScreen(QMainWindow):
             user_id=self.widget.user_object.user_id,
             currency=self.currency,
             time_period=self.selected_datetime,
-            chart_mode="month",
+            chart_mode=self.chart_mode,
             chart_type=self.chart_type,
         )
         self.chart.setTitle(chart_title)
