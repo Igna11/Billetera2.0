@@ -24,7 +24,7 @@
       <property name="styleSheet">
        <string notr="true"/>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout" stretch="7,7,0,1">
+      <layout class="QVBoxLayout" name="verticalLayout" stretch="5,7,0,1">
        <item>
         <widget class="QWidget" name="label_widget" native="true">
          <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -42,7 +42,7 @@
         <widget class="QWidget" name="main_widget" native="true">
          <layout class="QHBoxLayout" name="horizontalLayout" stretch="4,1,2">
           <item>
-           <layout class="QVBoxLayout" name="data_verticalLayout">
+           <layout class="QVBoxLayout" name="data_verticalLayout" stretch="0,0,0,0,0,0,0,0,0">
             <item>
              <widget class="QLabel" name="account_label_2">
               <property name="font">
@@ -56,7 +56,40 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="accounts_origin_comboBox"/>
+             <layout class="QHBoxLayout" name="origin_acc_HLayout" stretch="6,4">
+              <property name="spacing">
+               <number>5</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>10</number>
+              </property>
+              <item>
+               <widget class="QComboBox" name="accounts_origin_comboBox"/>
+              </item>
+              <item>
+               <widget class="QLabel" name="total_origin_label">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>20</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <weight>75</weight>
+                  <bold>true</bold>
+                  <kerning>true</kerning>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Total: </string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
             <item>
              <widget class="QLabel" name="account_label_3">
@@ -71,7 +104,46 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="accounts_dest_comboBox"/>
+             <layout class="QHBoxLayout" name="destination_acc_HLayout" stretch="6,4">
+              <property name="spacing">
+               <number>5</number>
+              </property>
+              <property name="sizeConstraint">
+               <enum>QLayout::SetDefaultConstraint</enum>
+              </property>
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>10</number>
+              </property>
+              <item>
+               <widget class="QComboBox" name="accounts_dest_comboBox"/>
+              </item>
+              <item>
+               <widget class="QLabel" name="total_dest_label">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>20</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <weight>75</weight>
+                  <bold>true</bold>
+                  <kerning>true</kerning>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Total: </string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
             <item>
              <widget class="QLabel" name="quantity_label">
@@ -93,6 +165,17 @@
                 <height>40</height>
                </size>
               </property>
+              <property name="maximumSize">
+               <size>
+                <width>200</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <kerning>true</kerning>
+               </font>
+              </property>
               <property name="toolTip">
                <string/>
               </property>
@@ -113,15 +196,32 @@ border-radius:5px;
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="status_label">
+             <widget class="QLabel" name="label_2">
               <property name="font">
                <font>
-                <pointsize>7</pointsize>
-                <italic>true</italic>
+                <pointsize>8</pointsize>
                </font>
               </property>
               <property name="text">
-               <string/>
+               <string>Description (optional)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="description_line">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>40</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">background-color: rgb(255, 255, 255);
+border-radius:5px;
+</string>
+              </property>
+              <property name="placeholderText">
+               <string>Description</string>
               </property>
              </widget>
             </item>
@@ -155,43 +255,50 @@ border-radius:5px;
           </item>
           <item>
            <layout class="QVBoxLayout" name="acc_verticalLayout" stretch="0,0,0">
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <item>
-             <widget class="QLabel" name="total_origin_label">
-              <property name="minimumSize">
-               <size>
-                <width>0</width>
-                <height>60</height>
-               </size>
-              </property>
+             <widget class="QLabel" name="datetime_label">
               <property name="font">
                <font>
-                <weight>75</weight>
-                <bold>true</bold>
+                <pointsize>8</pointsize>
                </font>
               </property>
               <property name="text">
-               <string>Total: </string>
+               <string>Date and time</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="total_dest_label">
-              <property name="minimumSize">
-               <size>
-                <width>0</width>
-                <height>60</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <weight>75</weight>
-                <bold>true</bold>
-               </font>
-              </property>
-              <property name="text">
-               <string>Total: </string>
-              </property>
-             </widget>
+             <layout class="QHBoxLayout" name="datetime_horizontalLayout">
+              <item>
+               <widget class="QDateEdit" name="date_edit">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>40</height>
+                 </size>
+                </property>
+                <property name="displayFormat">
+                 <string>dd/MM/yyyy</string>
+                </property>
+                <property name="calendarPopup">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QTimeEdit" name="time_edit">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
             <item>
              <spacer name="verticalSpacer_3">
@@ -214,7 +321,7 @@ border-radius:5px;
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
-          <widget class="QLabel" name="status_label_2">
+          <widget class="QLabel" name="status_label">
            <property name="font">
             <font>
              <pointsize>7</pointsize>
@@ -291,7 +398,7 @@ border-radius:5px;
      <x>0</x>
      <y>0</y>
      <width>745</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

@@ -54,7 +54,7 @@
             <item>
              <widget class="QStackedWidget" name="readjustment_stacked_widget">
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <widget class="QWidget" name="simple">
                <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -351,6 +351,9 @@ border-radius:5px;</string>
            </property>
            <property name="text">
             <string>More...</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
            </property>
           </widget>
          </item>

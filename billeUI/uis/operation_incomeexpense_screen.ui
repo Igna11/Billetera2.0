@@ -300,8 +300,7 @@ border-radius:5px;
                  </size>
                 </property>
                 <property name="styleSheet">
-                 <string notr="true">background-color: rgb(255, 255, 255);border-radius:5px;
-                                                                    </string>
+                 <string notr="true">                                                                    </string>
                 </property>
                 <property name="displayFormat">
                  <string>dd/MM/yyyy</string>
@@ -320,8 +319,7 @@ border-radius:5px;
                  </size>
                 </property>
                 <property name="styleSheet">
-                 <string notr="true">background-color: rgb(255, 255, 255);border-radius:5px;
-                                                                    </string>
+                 <string notr="true">                                                                    </string>
                 </property>
                </widget>
               </item>

@@ -6,11 +6,12 @@ Created on 12/02/2023 18:10
 @author: igna
 """
 import os
+import datetime
 from decimal import Decimal, InvalidOperation
 
 from PyQt5 import QtCore
 from PyQt5.uic import loadUi
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QDate, QTime
 from PyQt5.QtWidgets import QMainWindow, QToolButton
 
 from src.queries.accqueries import ListAccountsQuery
@@ -61,6 +62,10 @@ class TransferScreen(QMainWindow):
         self.cancel_button.clicked.connect(self.cancel)
         self.setup_all_button_in_lineedit()
 
+        # date_edit and time_edit set to current time
+        self.date_edit.setDate(QDate.currentDate())
+        self.time_edit.setTime(QTime.currentTime())
+
     def setup_all_button_in_lineedit(self):
         """Embeds a clickable 'All' button into the quantity_line QLineEdit."""
         self.all_button = QToolButton(self.quantity_line)
@@ -100,6 +105,22 @@ class TransferScreen(QMainWindow):
 
         self.quantity_line.resizeEvent = resizeEvent
 
+    def get_date_time(self) -> datetime.datetime:
+        """Generates a datetime object to be saved in the database"""
+        _date = self.date_edit.date()
+        _time = self.time_edit.time()
+        dttime = datetime.datetime(
+            _date.year(),
+            _date.month(),
+            _date.day(),
+            _time.hour(),
+            _time.minute(),
+            QTime.currentTime().second(),
+            QTime.currentTime().msec(),
+            tzinfo=datetime.UTC,
+        )
+        return dttime
+
     def insert_full_amount(self):
         """Sets the total amount in the quantity field for transfers"""
         if self.origin_acc_total is not None:
@@ -131,12 +152,25 @@ class TransferScreen(QMainWindow):
 
     def save(self):
         """Function called by the save_button to perform the transfer."""
+        dttime = self.get_date_time()
         try:
             value = Decimal(self.quantity_line.text())
             transfer = TransferHandler(user_id=self.widget.user_object.user_id, amount=value)
             trin, trout = transfer.set_transfer_objects(
                 in_acc=self.destination_account_object.account_id, out_acc=self.origin_account_object.account_id
             )
+            trin.operation_datetime = trout.operation_datetime = dttime
+            # hardcoded values to make MY life easier when using the app
+            trin.category = trout.category = "Transferencia"
+            trin.subcategory = "Transferencia de entrada"
+            trout.subcategory = "Transferencia de salida"
+            if self.description_line.text():
+                trin.description = f"Transferencia de {self.origin_account_object.account_name}: {self.description_line.text().strip()}"
+                trout.description = f"Transferencia a {self.destination_account_object.account_name}: {self.description_line.text().strip()}"
+            else:
+                trin.description = f"Transferencia de {self.origin_account_object.account_name}"
+                trout.description = f"Transferencia a {self.destination_account_object.account_name}"
+
             transfer.create_transfer(transfer_object_in=trin, transfer_object_out=trout)
 
             self.status_label.setText("<font color='green'>Transfer successfull!</font>")
@@ -148,7 +182,7 @@ class TransferScreen(QMainWindow):
             animatedlabel.AnimatedLabel("Incorrect amount!", message_type="warning").display()
             self.status_label.setText("<font color='red'>Amount to transfer can not be null.</font>")
         except ValueError:
-            animatedlabel.AnimatedLabel("Invalid value!", message_type="error").display()
+            animatedlabel.tatnimatedLabel("Invalid value!", message_type="error").display()
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
         except SameAccountError:
             animatedlabel.AnimatedLabel("Origin and destination are the same!", message_type="warning").display()
