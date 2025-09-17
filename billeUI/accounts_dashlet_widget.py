@@ -23,6 +23,8 @@ class AccountDashletWidget(QWidget):
         # variables
         self.acc_index = 0
         self.acc_list = acc_list
+        self.account_name = None
+        self.account_currency = None
         # buttons
         self.acc_next_button.clicked.connect(self.next_acc)
         self.acc_prev_button.clicked.connect(self.prev_acc)
@@ -36,18 +38,28 @@ class AccountDashletWidget(QWidget):
                 total += Decimal(account.account_total)
         return total
 
+    def set_monthly_balance(self, balance: Decimal) -> None:
+        if balance >= 0:
+            text_color = "green"
+            arrow = "\u2197"
+        else:
+            text_color = "red"
+            arrow = "\u2198"
+        text = f"Balance: <font color='{text_color}'><b>{currency_format(balance)} {self.account_currency} {arrow}</b></font>"
+        self.balance_label.setText(text)
+
     def set_labels(self):
         """Sets the values of acc_name, acc_currency and the value of total label."""
         if not self.acc_list:
             self.acc_label.setText("None")
         else:
-            account_name = self.acc_list[self.acc_index].model_dump()["account_name"]
-            account_currency = self.acc_list[self.acc_index].model_dump()["account_currency"]
+            self.account_name = self.acc_list[self.acc_index].model_dump()["account_name"]
+            self.account_currency = self.acc_list[self.acc_index].model_dump()["account_currency"]
             account_total = (
                 f"Total: <b>{currency_format(self.acc_list[self.acc_index].model_dump()['account_total'])}</b>"
             )
-            user_total = f"Total: <b>{currency_format(self._calculate_total())} ({account_currency})</b>"
-            self.acc_label.setText(f"{account_name} ({account_currency})")
+            user_total = f"Total: <b>{currency_format(self._calculate_total())} ({self.account_currency})</b>"
+            self.acc_label.setText(f"{self.account_name} ({self.account_currency})")
             self.total_label.setText(account_total)
             self.acc_total_label.setText(user_total)
 

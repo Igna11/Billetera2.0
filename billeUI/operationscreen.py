@@ -6,6 +6,7 @@ updated on 21/06/2026
 """
 import os
 from typing import List
+from decimal import Decimal
 from datetime import datetime
 
 from PyQt5 import QtCore
@@ -30,6 +31,8 @@ from billeUI import (
 )
 
 from src.queries.accqueries import ListAccountsQuery
+from src.datahandler.datahandler import AccountDataAnalyzer
+from .piechartfunctions import _get_month_interval
 
 
 class OperationScreen(QMainWindow):
@@ -127,6 +130,7 @@ class OperationScreen(QMainWindow):
             self.acc_totals_widget = QStackedWidget()
             self.acc_totals_widget.addWidget(self.account_dashlet)
             self.central_VL_Layout.insertWidget(0, self.acc_totals_widget)
+            self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def get_currency_list(self) -> List[str]:
         """
@@ -137,6 +141,32 @@ class OperationScreen(QMainWindow):
         currencies_list = list({account.account_currency for account in acc_list})
         currencies_list.sort()
         return currencies_list
+
+    def get_monthly_balance(self) -> Decimal:
+        """
+        calculates the balances of the month
+        """
+        if hasattr(self, "selected_datetime") and self.selected_datetime is not None:
+            dttime = self.selected_datetime
+        else:
+            dttime = self.curr_datetime
+        from_datetime, to_datetime = _get_month_interval(dttime.year, dttime.month)
+        income_balance = AccountDataAnalyzer.get_user_totals_by_period(
+            user_id=self.widget.user_object.user_id,
+            from_datetime=from_datetime,
+            to_datetime=to_datetime,
+            operation_type="income",
+            currency=self.currency,
+        )
+        expense_balance = AccountDataAnalyzer.get_user_totals_by_period(
+            user_id=self.widget.user_object.user_id,
+            from_datetime=from_datetime,
+            to_datetime=to_datetime,
+            operation_type="expense",
+            currency=self.currency,
+        )
+        balance = income_balance - expense_balance
+        return balance
 
     def income(self) -> None:
         """Takes the user to the income screen"""
@@ -203,6 +233,7 @@ class OperationScreen(QMainWindow):
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def next_month_chart(self):
         """Changes to a pie chart for the next month"""
@@ -223,6 +254,7 @@ class OperationScreen(QMainWindow):
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def previous_month_chart(self):
         """Changes to a pie chart for the previus month"""
@@ -243,6 +275,7 @@ class OperationScreen(QMainWindow):
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def switch_chart_type(self):
         """Changes the pie chart from income to expenses and viceversa"""
@@ -272,6 +305,7 @@ class OperationScreen(QMainWindow):
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def custom_date_range_chart(self):
         """
@@ -311,6 +345,7 @@ class OperationScreen(QMainWindow):
             )
             self.chart.setTitle(chart_title)
             self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def change_currency_chart(self):
         """Change the currency of the pie chart"""
@@ -336,6 +371,7 @@ class OperationScreen(QMainWindow):
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def back(self) -> None:
         """Returns to the LoginScreen Menu"""

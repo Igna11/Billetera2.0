@@ -24,6 +24,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QLabel" name="balance_label">
+       <property name="text">
+        <string>Balance:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QFrame" name="frame">
        <property name="frameShape">
         <enum>QFrame::HLine</enum>
