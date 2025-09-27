@@ -182,7 +182,7 @@ class TransferScreen(QMainWindow):
             animatedlabel.AnimatedLabel("Incorrect amount!", message_type="warning").display()
             self.status_label.setText("<font color='red'>Amount to transfer can not be null.</font>")
         except ValueError:
-            animatedlabel.tatnimatedLabel("Invalid value!", message_type="error").display()
+            animatedlabel.AnimatedLabel("Invalid value!", message_type="error").display()
             self.status_label.setText("<font color='red'>Invalid value entered.</font>")
         except SameAccountError:
             animatedlabel.AnimatedLabel("Origin and destination are the same!", message_type="warning").display()
