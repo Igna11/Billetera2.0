@@ -70,7 +70,7 @@ def load_data(
         # set the time frame
         from_datetime, to_datetime = _get_month_interval(time_period.year, time_period.month)
 
-        data_outer = AccountDataAnalyzer.group_operations(
+        data_outer = AccountDataAnalyzer.categorize_flow_operations(
             user_id=user_id,
             from_datetime=from_datetime,
             to_datetime=to_datetime,
@@ -78,7 +78,7 @@ def load_data(
             data_type="category",
             currency=currency,
         )
-        data_inner = AccountDataAnalyzer.group_operations(
+        data_inner = AccountDataAnalyzer.categorize_flow_operations(
             user_id=user_id,
             from_datetime=from_datetime,
             to_datetime=to_datetime,
@@ -89,7 +89,7 @@ def load_data(
 
     elif chart_mode == "period":
         ci_date, cf_date = time_period.values()
-        data_outer = AccountDataAnalyzer.group_operations(
+        data_outer = AccountDataAnalyzer.categorize_flow_operations(
             user_id=user_id,
             from_datetime=ci_date,
             to_datetime=cf_date,
@@ -97,7 +97,7 @@ def load_data(
             data_type="category",
             currency=currency,
         )
-        data_inner = AccountDataAnalyzer.group_operations(
+        data_inner = AccountDataAnalyzer.categorize_flow_operations(
             user_id=user_id,
             from_datetime=ci_date,
             to_datetime=cf_date,

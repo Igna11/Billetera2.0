@@ -12,7 +12,7 @@ This module is intended to be used by the module commands and not directly.
 import os
 import re
 import sqlite3
-import datetime
+from datetime import datetime, date, UTC
 from decimal import Decimal
 from string import Template
 from typing import Optional, Literal, List, Sequence
@@ -22,8 +22,8 @@ from pydantic import BaseModel, Field, field_validator
 from pydantic_extra_types.currency_code import ISO4217
 
 # custom sqlite3 adapter for date and datetime
-sqlite3.register_adapter(datetime.date, lambda val: val.isoformat())
-sqlite3.register_adapter(datetime.datetime, lambda val: val.isoformat())
+sqlite3.register_adapter(date, lambda val: val.isoformat())
+sqlite3.register_adapter(datetime, lambda val: val.isoformat())
 
 INSERT_INTO_QUERY = Template(
     """
@@ -38,11 +38,12 @@ INSERT_INTO_QUERY = Template(
       subcategory,
       description,
       tags,
-      details,
+      group_id,
+      detail_id,
       created_at,
       updated_at)
     VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 )
 UPDATE_OPERATIONS_QUERY = Template(
@@ -58,7 +59,8 @@ UPDATE_OPERATIONS_QUERY = Template(
       subcategory = ?,
       description = ?,
       tags = ?,
-      details = ?,
+      group_id = ?,
+      detail_id = ?,
       updated_at = ?
     WHERE
       operation_id = ?
@@ -93,16 +95,17 @@ class OperationsModel(BaseModel, validate_assignment=True):
         operation_id (str): The unique identifier for the operation.
         account_name (str, optional): Name of the account.
         account_total (float, optional): Total amount of funds in the account.
-        operation_datetime (datetime.datetime, optional): Date and time of a given operation. If not provided uses now.
+        operation_datetime (datetime, optional): Date and time of a given operation. If not provided uses now.
         amount (float): Amount of the operation.
         operation_type (str): Type of the operation (income, expense, transfer).
         category (str, optional): Category name of the operation.
         subcategory (str, optional): Subcategory name of the operation.
         description (str, optional): Description of the operation.
         tags (str, optional): Tags of the operation to be used for filtering.
-        details (str, optional): details of the operation, may be a ticket or a receipt on another table.
-        created_at (datetime.datetime, optional): UTC datetime. Optional because it should not be user provided.
-        updated_at (datetime.datetime, optional): UTC datetime. Optional because it should not be user provided.
+        group_id (str, optional): The unique identifier of an entry in the operation_groups table.
+        details_id (str, optional): The unique identifier of an entry in the operation_details table.
+        created_at (datetime, optional): UTC datetime. Optional because it should not be user provided.
+        updated_at (datetime, optional): UTC datetime. Optional because it should not be user provided.
     """
 
     user_id: Optional[str] = None
@@ -110,7 +113,7 @@ class OperationsModel(BaseModel, validate_assignment=True):
     operation_id: str = Field(default_factory=lambda: "op_" + str(ULID()))
     account_name: Optional[str] = None
     account_total: Optional[Decimal] = None
-    operation_datetime: Optional[datetime.datetime] = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
+    operation_datetime: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
     cumulative_amount: Optional[Decimal] = Field(ge=0, default=None)
     amount: Decimal = Field(gt=0)
     operation_type: Literal["income", "expense", "transfer_in", "transfer_out"]
@@ -119,9 +122,10 @@ class OperationsModel(BaseModel, validate_assignment=True):
     subcategory: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[str] = None
-    details: Optional[str] = None
-    created_at: Optional[datetime.datetime] = None
-    updated_at: Optional[datetime.datetime] = None
+    group_id: Optional[str] = None
+    detail_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     @staticmethod
     def __db_path(user_id) -> str:
@@ -163,7 +167,8 @@ class UserOperations(OperationsModel):
 
         Args:
             user_id (str): The unique identifier for the user.
-
+            account_id (str): The uique identifier for the account.
+            operation_id (str): The unique identifier for the operation.
         Returns:
             UserOperation: An UserOperation object with that operation data.
         """
@@ -292,7 +297,7 @@ class UserOperations(OperationsModel):
 
     @classmethod
     def get_operations_list_from_datetime(
-        cls, user_id: str, account_id: str, operation_datetime: datetime.datetime
+        cls, user_id: str, account_id: str, operation_datetime: datetime
     ) -> List["UserOperations"]:
         """
         Fetches all operations from db with datetime after the input datetime and the first operation before, sorted
@@ -304,7 +309,7 @@ class UserOperations(OperationsModel):
         Args:
             user_id (str): The unique identifier for the user
             account_id (str): The unique identifier for the account
-            operation_datetime (datetime.datetime): the datetime to use as filter
+            operation_datetime (datetime): the datetime to use as filter
         Returns:
             list[UserOperations]: A list of sorted UserOperation objects for a given account with given datetimes.
         """
@@ -383,7 +388,8 @@ class UserOperations(OperationsModel):
               subcategory,
               description,
               tags,
-              details,
+              group_id,
+              detail_id,
               created_at,
               updated_at
             FROM row_number_table
@@ -482,7 +488,7 @@ class UserOperations(OperationsModel):
         returns:
             self (useroperations): an useroperations object.
         """
-        self.created_at = self.updated_at = datetime.datetime.now(datetime.UTC)
+        self.created_at = self.updated_at = datetime.now(UTC)
 
         conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(self.user_id)))
         cur = conn.cursor()
@@ -502,7 +508,8 @@ class UserOperations(OperationsModel):
                     self.subcategory,
                     self.description,
                     self.tags,
-                    self.details,
+                    self.group_id,
+                    self.detail_id,
                     self.created_at,
                     self.updated_at,
                 ),
@@ -533,7 +540,7 @@ class UserOperations(OperationsModel):
         Returns:
             self (UserOperations): An UserOperations object.
         """
-        self.updated_at = datetime.datetime.now(datetime.UTC)
+        self.updated_at = datetime.now(UTC)
 
         with sqlite3.connect(
             (os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(self.user_id)))
@@ -554,7 +561,8 @@ class UserOperations(OperationsModel):
                     self.subcategory,
                     self.description,
                     self.tags,
-                    self.details,
+                    self.group_id,
+                    self.detail_id,
                     self.updated_at,
                     self.operation_id,
                 ),
@@ -584,7 +592,7 @@ class UserOperations(OperationsModel):
         returns:
             self (useroperations): an useroperations object.
         """
-        self.created_at = self.updated_at = datetime.datetime.now(datetime.UTC)
+        self.created_at = self.updated_at = datetime.now(UTC)
 
         conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(self.user_id)))
         cur = conn.cursor()
@@ -604,7 +612,8 @@ class UserOperations(OperationsModel):
                         oper.subcategory,
                         oper.description,
                         oper.tags,
-                        oper.details,
+                        oper.group_id,
+                        oper.detail_id,
                         self.updated_at,
                         oper.operation_id,
                     ),
@@ -622,7 +631,8 @@ class UserOperations(OperationsModel):
                         self.subcategory,
                         self.description,
                         self.tags,
-                        self.details,
+                        self.group_id,
+                        self.detail_id,
                         self.created_at,
                         self.updated_at,
                     ),
@@ -654,7 +664,7 @@ class UserOperations(OperationsModel):
         returns:
             self (useroperations): an useroperations object.
         """
-        self.updated_at = datetime.datetime.now(datetime.UTC)
+        self.updated_at = datetime.now(UTC)
 
         conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(self.user_id)))
         cur = conn.cursor()

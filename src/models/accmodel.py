@@ -197,7 +197,7 @@ class UserAccounts(BaseModel, validate_assignment=True):
         Database name is the same for every user.
         Database columns are:
             account_id -> primary key acc_ULID
-            user_id -> text
+            user_id -> text (not used as foreing key, accounts_table does not need to know anything about users table)
             account_name -> text not null
             account_currency -> text not null (3 chars, ISO 4217)
             table_name -> text not null (account_name + account_currency)
@@ -206,7 +206,7 @@ class UserAccounts(BaseModel, validate_assignment=True):
             created_at -> datetime
             updated_at -> datetime
         """
-        conn = sqlite3.connect(UserAccounts.__db_path(user_id))
+        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserAccounts.__db_path(user_id)))
         cur = conn.cursor()
         cur.execute(
             """
@@ -225,11 +225,12 @@ class UserAccounts(BaseModel, validate_assignment=True):
         conn.commit()
         conn.close()
 
-    def create_acc_table(self) -> None:
+    def create_account_operations_tables(self) -> None:
         """
-        Creates a new table for each account.
+        Takes care of the creation of the operations related tables: account operations tables (one per account),
+        operation_groups table (one for all accounts) and operation_details table (one for all acounts).
 
-        The names of the tables are user inputs and have restrictions for security reasons.
+        The names of the account operations tables are user inputs and have restrictions for security reasons.
 
         Args:
             self
@@ -244,7 +245,8 @@ class UserAccounts(BaseModel, validate_assignment=True):
             subcategory -> text
             description -> text
             tags -> text
-            details -> text/possible foreing key
+            group_id -> text/foreing key referencing operation_groups table
+            detail_id -> text/foreing key referencing operation_details table
             created_at -> datetime
             updated_at -> datetime
         """
@@ -253,10 +255,12 @@ class UserAccounts(BaseModel, validate_assignment=True):
 
         table_name = f"{self.account_name}_{self.account_currency}"
 
-        conn = sqlite3.connect(UserAccounts.__db_path(self.user_id))
+        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserAccounts.__db_path(self.user_id)))
         cur = conn.cursor()
+        # creation of the the account (operations) table and the operation_groups table
         try:
             cur.execute("BEGIN TRANSACTION")
+            # account operations table
             cur.execute(
                 f"""
                 CREATE TABLE IF NOT EXISTS {table_name} (
@@ -269,11 +273,46 @@ class UserAccounts(BaseModel, validate_assignment=True):
                 subcategory TEXT,
                 description TEXT,
                 tags TEXT,
-                details TEXT,
+                group_id TEXT,
+                detail_id TEXT,
+                created_at DATETIME,
+                updated_at DATETIME,
+                FOREIGN KEY (group_id) REFERENCES operation_groups (group_id) ON DELETE SET NULL, 
+                FOREIGN KEY (detail_id) REFERENCES operation_details (detail_id) ON DELETE SET NULL
+                )"""
+            )
+            # operation groups table
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS operation_groups (
+                group_id TEXT PRIMARY KEY,
+                user_id TEXT,
+                group_datetime DATETIME NOT NULL,
+                group_name TEXT NOT NULL,
+                group_currency TEXT NOT NULL,
+                original_amount DECIMAL,
+                category TEXT,
+                subcategory TEXT,
+                description TEXT,
+                status TEXT NOT NULL,
+                created_at DATETIME,
+                updated_at DATETIME
+                )
+                """
+            )
+            # operation details table
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS operation_details (
+                detail_id TEXT PRIMARY KEY,
+                operation_id TEXT NOT NULL,
+                account_id TEXT NOT NULL,
+                details BLOB NOT NULL,
                 created_at DATETIME,
                 updated_at DATETIME
                 )"""
             )
+            # insert new account operations table name into accounts table
             cur.execute(
                 """
                 INSERT INTO accounts
@@ -362,7 +401,7 @@ class UserAccounts(BaseModel, validate_assignment=True):
         Returns:
             UserAccount: An UserAccount object.
         """
-        conn = sqlite3.connect(UserAccounts.__db_path(user_id))
+        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserAccounts.__db_path(user_id)))
         cur = conn.cursor()
         try:
             cur.execute("BEGIN TRANSACTION")

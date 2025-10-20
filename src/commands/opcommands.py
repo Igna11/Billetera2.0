@@ -86,7 +86,8 @@ class EditAccountOperationCommand(OperationsModel):
             self.subcategory,
             self.description,
             self.tags,
-            self.details,
+            self.group_id,
+            self.detail_id,
             self.created_at,
             self.updated_at,
         ]
@@ -112,8 +113,10 @@ class EditAccountOperationCommand(OperationsModel):
             oper.description = self.description
         if self.tags:
             oper.tags = self.tags
-        if self.details:
-            oper.details = self.details
+        if self.group_id:
+            oper.group_id = self.group_id
+        if self.detail_id:
+            oper.detail_id = self.detail_id
         return oper.save()
 
 

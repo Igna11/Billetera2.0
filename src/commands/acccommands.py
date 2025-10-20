@@ -6,7 +6,7 @@ It uses the models.py module.
 """
 
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 from src.models.usrmodel import User
 from src.models.accmodel import UserAccounts, AccountNotFoundError
@@ -19,12 +19,23 @@ class AccountAlreadyExistsError(Exception):
 class CreateUsersAccountCommand(BaseModel):
     """Creates an account table with name <table_name> for a given user in the accounts_database"""
 
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    user_id: Optional[str] = None
     account_name: str
     account_currency: str
 
+    @model_validator(mode="after")
+    def check_mail_or_id(self):
+        """Checks if at least one of email or user_id is used as input"""
+        if not self.email and not self.user_id:
+            raise ValueError("You must provide either an email or an user_id")
+        return self
+
     def execute(self) -> UserAccounts:
-        user = User.get_user_by_email(self.email)
+        if self.user_id:
+            user = User.get_user_by_id(self.user_id)
+        else:
+            user = User.get_user_by_email(self.email)
         try:
             UserAccounts.get_account_by_table_name(user.user_id, f"{self.account_name}_{self.account_currency}")
             raise AccountAlreadyExistsError
@@ -33,7 +44,7 @@ class CreateUsersAccountCommand(BaseModel):
         user_account = UserAccounts(
             user_id=user.user_id, account_name=self.account_name, account_currency=self.account_currency
         )
-        user_account.create_acc_table()
+        user_account.create_account_operations_tables()
         return user_account
 
 

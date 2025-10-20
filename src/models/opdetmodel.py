@@ -13,7 +13,8 @@ import sqlite3
 import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel
+from ulid import ULID
+from pydantic import BaseModel, Field
 
 # custom sqlite3 adapter for date and datetime
 sqlite3.register_adapter(datetime.date, lambda val: val.isoformat())
@@ -29,6 +30,7 @@ class OperationsDetails(BaseModel, validate_assignment=True):
     user_id: Optional[str] = None
     account_id: Optional[str] = None
     operation_id: Optional[str] = None
+    detail_id: str = Field(default_factory=lambda: "detail_" + str(ULID()))
     account_name: Optional[str] = None
     details: Optional[bytes] = None
     created_at: Optional[datetime.datetime] = None
@@ -106,11 +108,12 @@ class OperationsDetails(BaseModel, validate_assignment=True):
             cur.execute(
                 """
                 INSERT INTO operation_details
-                  (operation_id, account_id, details, created_at, updated_at)
+                  (detail_id, operation_id, account_id, details, created_at, updated_at)
                 VALUES
-                  (?, ?, ?, ?, ?)
+                  (?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    self.detail_id,
                     self.operation_id,
                     self.account_id,
                     self.details,
@@ -162,30 +165,5 @@ class OperationsDetails(BaseModel, validate_assignment=True):
         cur = conn.cursor()
 
         cur.execute("DELETE FROM operation_details WHERE operation_id = ?", (self.operation_id,))
-        conn.commit()
-        conn.close()
-
-    @classmethod
-    def create_operation_details_table(cls, user_id: str, database_name: str = "accounts_database.db") -> None:
-        """
-        Creates the operation_details table where extra information about operations will be stored, such as pictures
-        or pdfs in their binary form
-        Args:
-            user_id (str): Unique identifier of the user
-            database_name (str, optional): The name of the database, default to 'accounts_database.db'
-        """
-        acc_table_query = """
-            CREATE TABLE IF NOT EXISTS operation_details (
-              operation_id TEXT NOT NULL,
-              account_id TEXT NOT NULL,
-              details BLOB NOT NULL,
-              created_at DATETIME,
-              updated_at DATETIME
-            )"""
-        db_path = os.path.join("data", user_id, database_name)
-
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
-        cur.execute(acc_table_query)
         conn.commit()
         conn.close()
