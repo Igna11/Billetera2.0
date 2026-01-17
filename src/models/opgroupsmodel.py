@@ -33,13 +33,13 @@ class OperationGroups(BaseModel, validate_assignment=True):
     group_id: str = Field(default_factory=lambda: "group_" + str(ULID()))
     user_id: Optional[str] = None
     group_datetime: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
-    group_name: str
+    group_name: Optional[str] = None
     group_currency: Optional[ISO4217] = None
     original_amount: Optional[Decimal] = None
     category: Optional[str] = None
     subcategory: Optional[str] = None
     description: Optional[str] = None
-    status: Literal["open", "closed", "cancelled"]
+    status: Optional[Literal["open", "closed", "cancelled"]] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
