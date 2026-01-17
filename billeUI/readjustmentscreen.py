@@ -7,11 +7,10 @@ Created on 12/02/2023 18:10
 """
 import os
 import decimal
-import datetime
 
 from PyQt5 import QtCore
 from PyQt5.uic import loadUi
-from PyQt5.QtCore import Qt, QDate, QTime
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMainWindow, QCompleter
 
 from src.queries.accqueries import ListAccountsQuery

@@ -245,7 +245,7 @@ border-radius:5px;
            </layout>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="acc_verticalLayout" stretch="0,0,0,0,0,0">
+           <layout class="QVBoxLayout" name="acc_verticalLayout" stretch="0,0,0,0,0,0,0,0">
             <property name="spacing">
              <number>5</number>
             </property>
@@ -300,7 +300,7 @@ border-radius:5px;
                  </size>
                 </property>
                 <property name="styleSheet">
-                 <string notr="true">                                                                    </string>
+                 <string notr="true"/>
                 </property>
                 <property name="displayFormat">
                  <string>dd/MM/yyyy</string>
@@ -319,11 +319,54 @@ border-radius:5px;
                  </size>
                 </property>
                 <property name="styleSheet">
-                 <string notr="true">                                                                    </string>
+                 <string notr="true"/>
                 </property>
                </widget>
               </item>
              </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <item>
+               <widget class="QCheckBox" name="group_operation_checkBox">
+                <property name="font">
+                 <font>
+                  <pointsize>8</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Group Operation</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="groups_button">
+                <property name="font">
+                 <font>
+                  <pointsize>8</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Groups</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QComboBox" name="group_combo_box">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>8</pointsize>
+               </font>
+              </property>
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
             </item>
             <item>
              <spacer name="verticalSpacer">

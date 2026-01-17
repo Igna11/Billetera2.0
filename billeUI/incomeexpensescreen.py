@@ -11,14 +11,16 @@ import decimal
 
 from PyQt5 import QtCore
 from PyQt5.uic import loadUi
-from PyQt5.QtWidgets import QMainWindow, QCompleter
 from PyQt5.QtCore import Qt, QDate, QTime
+from PyQt5.QtWidgets import QMainWindow, QCompleter, QMessageBox
 
+from src.models.opgroupsmodel import OperationGroups
 from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetUniqueCategoriesByAccount, GetUniqueSubcategoriesByAccount
+from src.commands.groupcommands import CreateOperationGroupCommand
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
-from billeUI import UISPATH, operationscreen, animatedlabel, currency_format
+from billeUI import UISPATH, operationscreen, groupbrowser, animatedlabel, currency_format
 
 
 class IncomeExpenseScreen(QMainWindow):
@@ -39,6 +41,15 @@ class IncomeExpenseScreen(QMainWindow):
         self.acc_items_list = widget.account_objects
         self.acc_list = [f"{acc.account_name} ({acc.account_currency})" for acc in widget.account_objects]
 
+        # groups
+        self.group_browser = None
+        self.groups_button.clicked.connect(self.open_group_browser)
+        self.groups_list = self.get_list_of_groups_from_db()
+        self.group_combo_box.addItems(self.set_group_combo_box())
+        self.on_enter_pressed_group_combo_box()
+        self.create_group_message = QMessageBox()
+
+        self.group_operation_checkBox.clicked.connect(self.set_enable_groups_combo_box)
         self.set_operation_label(operation_flag)
         self.accounts_comboBox.addItems(self.acc_list)
         self.set_acc_data(self.accounts_comboBox.currentIndex())
@@ -150,6 +161,62 @@ class IncomeExpenseScreen(QMainWindow):
         subcategory_completer.setCaseSensitivity(Qt.CaseInsensitive)
         subcategory_completer.setFilterMode(Qt.MatchContains)
         self.subcategory_line.setCompleter(subcategory_completer)
+
+    ################# GROUPS #################
+    def open_group_browser(self) -> None:
+        """
+        Opens the window widget for the group browser
+        """
+        if self.group_browser is None:
+            self.group_browser = groupbrowser.GroupBrowserWidget(widget=self.widget)
+        self.group_browser.show()
+
+    def get_list_of_groups_from_db(self) -> list[OperationGroups]:
+        """
+        Returns the list of existing operation groups with their ids
+        """
+        operation_groups_list = OperationGroups().get_groups_list(
+            user_id=self.widget.user_object.user_id, status="open"
+        )
+
+        return operation_groups_list
+
+    def set_enable_groups_combo_box(self) -> None:
+        """
+        Enables the combo box for creating groups or choosing one.
+        """
+        if not self.group_combo_box.isEnabled():
+            self.group_combo_box.setEnabled(True)
+        else:
+            self.group_combo_box.setEnabled(False)
+
+    def set_group_combo_box(self) -> list[str]:
+        groups = [f"{group.group_name} {group.group_currency}" for group in self.groups_list]
+        return groups
+
+    def create_group(self) -> None:
+        group_name = self.group_combo_box.currentText()
+
+        popup_message = self.create_group_message.question(
+            self,
+            "Group Creation",
+            f"Do you want to create the group {group_name}?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+        if popup_message == QMessageBox.Yes:
+            group = CreateOperationGroupCommand(
+                user_id=self.widget.user_object.user_id, group_name=group_name, group_currency="ARS"
+            )
+            group.execute()
+        if popup_message == QMessageBox.No:
+            pass
+
+    def on_enter_pressed_group_combo_box(self) -> None:
+        if self.group_combo_box.lineEdit():
+            self.group_combo_box.lineEdit().returnPressed.connect(self.create_group)
+
+    ################# Save operations #################
 
     def save(self) -> None:
         """Saves the operation into the database"""
