@@ -218,6 +218,7 @@ class AccountBrowser(QMainWindow):
                 ).execute()
                 row.name_label.setStyleSheet("color: black; font-weight: bold;")
                 animatedlabel.AnimatedLabel("Changes saved! ✅", message_type="success").display()
+                self.save_changes_button.setEnabled(False)
             except sqlite3.OperationalError:
                 animatedlabel.AnimatedLabel("Duplicated name!", message_type="error").display()
             except InvalidAccountNameError:
