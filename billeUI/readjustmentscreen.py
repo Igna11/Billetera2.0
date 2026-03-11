@@ -134,20 +134,23 @@ class ReadjustmentScreen(QMainWindow):
     def save(self):
         """Saves the new total value of the account."""
         if self.quantity_line_2.text() != "":
-            value = decimal.Decimal(self.quantity_line_2.text())
             self.more_data = {
                 "category": self.category_line.text(),
                 "subcategory": self.subcategory_line.text(),
                 "description": self.description_line.text(),
             }
+            value = self.quantity_line_2.text()
+
         elif self.quantity_line.text() != "":
             self.more_data = {
                 "category": "Readjustment",
                 "subcategory": "Readjustment",
                 "Description": "Readjustment",
             }
-            value = decimal.Decimal(self.quantity_line.text())
+            value = self.quantity_line.text()
+
         try:
+            value = decimal.Decimal(value)
             readjustment = OperationHandler(
                 user_id=self.widget.user_object.user_id,
                 account_id=self.account_id,
@@ -159,12 +162,18 @@ class ReadjustmentScreen(QMainWindow):
             readjustment.create_operations(cml)
             animatedlabel.AnimatedLabel("Operation successfull ✅").display()
             self.status_label.setText("<font color='green'>Operation successfull</font>")
-        except ValueError:
-            animatedlabel.AnimatedLabel("Invalid value!", message_type="error").display()
-            self.status_label.setText("<font color='red'>Invalid value.</font>")
         except decimal.InvalidOperation:
-            animatedlabel.AnimatedLabel("Invalid value!", message_type="error").display()
-            self.status_label.setText("<font color='red'>Invalid value.</font>")
+            animatedlabel.AnimatedLabel("Invalid value!", message_type="warning").display()
+            self.status_label.setText("<font color='red'>Value must be a number.</font>")
+        except ValueError as e:
+            errors = e.errors()[0]
+            error_type = errors.get("type")
+            if error_type == "greater_than":
+                animatedlabel.AnimatedLabel("Invalid value!", message_type="warning").display()
+                self.status_label.setText("<font color='red'>Value must be different than current one.</font>")
+            elif error_type == "greater_than_equal":
+                animatedlabel.AnimatedLabel("Invalid value!", message_type="warning").display()
+                self.status_label.setText("<font color='red'>Value must be a postive.</font>")
         except UnboundLocalError:
             animatedlabel.AnimatedLabel("No value given!", message_type="warning").display()
             self.status_label.setText("<font color='red'>No value given to readjust!</font>")
