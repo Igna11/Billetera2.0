@@ -56,6 +56,43 @@ TOTAL_QUERY = Template(
 
 class AccountDataAnalyzer(UserAccounts):
 
+    def get_all_operations(self, **kwargs) -> List:
+        """Returns an ordered by timestamp list of all existing operations of all accounts of the same currency"""
+        accounts_list = UserAccounts.get_all_accounts(user_id=self.user_id, **kwargs)
+        select_template = Template("SELECT *, '$account_name' AS account_name FROM $table_name")
+
+        operations_selects_list = []
+        for account in accounts_list:
+            table_name = f"{account.account_name}_{account.account_currency}"
+            acc_name = account.account_name
+            operations_selects_list.append(
+                select_template.substitute(
+                    table_name=table_name,
+                    account_name=acc_name,
+                )
+            )
+
+        # join all queries for every table with a UNION ALL
+        operation_select_union = " UNION ALL ".join(operations_selects_list)
+
+        final_query = operation_select_union + " ORDER BY operation_datetime DESC;"
+
+        db_path = os.path.join("data", self.user_id, "accounts_database.db")
+
+        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", db_path))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        try:
+            cur.execute(final_query)
+            all_operations = cur.fetchall()
+            conn.close()
+        except sqlite3.OperationalError as e:
+            print(e)  # debugging and develop purposes
+
+        operation_objects = [UserOperations(**operation) for operation in all_operations]
+
+        return operation_objects
+
     @classmethod
     def get_user_totals(cls, user_id: str, **kwargs: int | str) -> Decimal:
         """Calculates the User total of all accounts for every currency if specify in kwargs."""
