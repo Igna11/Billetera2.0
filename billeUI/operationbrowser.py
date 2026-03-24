@@ -24,6 +24,8 @@ from src.models.opmodel import UserOperations
 from src.ophandlers.deletehandler import DeletionHandler
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
+from src.datahandler.datahandler import AccountDataAnalyzer
+
 from billeUI import UISPATH, operationscreen, currency_format, animatedlabel, headerfiltermixin
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
@@ -84,9 +86,10 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
         self.accounts_object = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
         self.acc_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.accounts_object]
+        self.acc_list.extend(["All"])
         self.accounts_comboBox.addItems(self.acc_list)
 
-        self.column_widths = [135, 100, 90, 90, 100, 130, 400, 10]
+        self.column_widths = [135, 100, 90, 90, 100, 130, 400, 40]
         self.headers_list = [
             "Date & Time",
             "Cumulatives",
@@ -109,12 +112,15 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.next_page_label = PageLink(">", parent=self)
         self.prev_page_label = PageLink("<", parent=self)
 
-        self.HLablelLayout.addWidget(self.page_label)
-        self.HLablelLayout.addWidget(self.prev_page_label)
-        self.HLablelLayout.addWidget(self.next_page_label)
+        self.HLabelLayout.addWidget(self.page_label)
+        self.HLabelLayout.addWidget(self.prev_page_label)
+        self.HLabelLayout.addWidget(self.next_page_label)
 
         self.next_page_label.clicked.connect(self.next_page)
         self.prev_page_label.clicked.connect(self.prev_page)
+
+        # View all operations
+        self.all_ops_button.clicked.connect(self.view_all_operations)
 
         # Pupulation of the tables with operations data
         self.set_table_data(self.accounts_comboBox.currentIndex())
@@ -123,7 +129,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         # Filters
         self.init_header_filter(
             self.operation_table_widget,
-            filterable_columns=[3, 4, 5],
+            filterable_columns=([3, 4, 5] if self.accounts_comboBox.currentText != "All" else [3, 4, 5, 7]),
             operations_list=self.filter_operations(self.operations_list),
         )
         self.set_filter_callback(lambda: self.set_table_data(self.accounts_comboBox.currentIndex()))
@@ -140,6 +146,21 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
         # Go back to previus window
         self.back_button.clicked.connect(self.back)
+
+    def add_account_column(self) -> None:
+        if "Account Name" not in self.headers_list:
+            self.column_widths.insert(-1, 200)
+            self.headers_list.insert(-1, "Account Name")
+
+    def remove_account_column(self) -> None:
+        if "Account Name" in self.headers_list:
+            print(f"{self.column_widths.pop(-2)=}")
+            print(self.column_widths)
+            self.headers_list.remove("Account Name")
+
+    def view_all_operations(self) -> None:
+        self.add_account_column()
+        self.set_table_data(self.accounts_comboBox.currentIndex())
 
     def next_page(self) -> None:
         try:
@@ -168,12 +189,23 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             )
             self.delete_op_button.setVisible(any_checked)
 
+    def get_all_operations_data(self) -> List:
+        """Makes the query to fetch ALL operations in ALL accounts"""
+        acc_data_obj = AccountDataAnalyzer(user_id=self.widget.user_object.user_id)
+        all_operations = acc_data_obj.get_all_operations()
+        self.add_account_column()
+        return all_operations
+
     def get_operations_data(self, index: int) -> None:
         """Makes de query to fetch all operations from a given account"""
-        self.acc_id = self.accounts_object[index].model_dump()["account_id"]
-        self.operations_list = ListOperationsQuery(
-            user_id=self.widget.user_object.user_id, account_id=self.acc_id
-        ).execute(order_by_datetime="DESC")
+        if index == len(self.accounts_object):
+            acc_data_obj = AccountDataAnalyzer(user_id=self.widget.user_object.user_id)
+            self.operations_list = acc_data_obj.get_all_operations()
+        else:
+            self.acc_id = self.accounts_object[index].model_dump()["account_id"]
+            self.operations_list = ListOperationsQuery(
+                user_id=self.widget.user_object.user_id, account_id=self.acc_id
+            ).execute(order_by_datetime="DESC")
         self.current_account_index = index
 
     def set_table_data(self, index: int) -> None:
@@ -182,6 +214,11 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         """
         # Disconnect the signal for the table so cellChanged.connect is not triggered while loading a new account
         self.operation_table_widget.blockSignals(True)
+
+        if self.accounts_comboBox.itemText(index) == "All":
+            self.operations_list = self.get_all_operations_data()
+        else:
+            self.remove_account_column()
 
         # call the get_operations_data only when the account is changed and not when moving through pagination
         if self.current_account_index != index:
@@ -248,6 +285,9 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                 QtWidgets.QTableWidgetItem(operation.description),
             ]
 
+            if self.accounts_comboBox.currentText() == "All":
+                items.insert(len(items), QtWidgets.QTableWidgetItem(operation.account_name))
+
             # save the account_id and operation_id to be retrieved later
             items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
             items[0].setData(QtCore.Qt.UserRole + 1, self.acc_id)
@@ -288,10 +328,10 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                     value = operation.operation_type
                 elif col == 4:
                     value = operation.category
-                    if operation.category == "Compas":
-                        print(operation)
                 elif col == 5:
                     value = operation.subcategory
+                elif col == 7:
+                    value = operation.account_name
                 if value not in vals:
                     passed = False
                     break
@@ -355,6 +395,11 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.save_changes_button.setEnabled(False)
         # force update data in set_table by changing the self.current_account_index
         self.current_account_index = -1
+
+        if self.accounts_comboBox.currentText() == "All":
+            # self.set_True_all_operations_flag()
+            self.operations_list = self.get_all_operations_data()
+
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.rows_changed.clear()
 
