@@ -119,9 +119,6 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.next_page_label.clicked.connect(self.next_page)
         self.prev_page_label.clicked.connect(self.prev_page)
 
-        # View all operations
-        self.all_ops_button.clicked.connect(self.view_all_operations)
-
         # Pupulation of the tables with operations data
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.accounts_comboBox.currentIndexChanged.connect(self.set_table_data)
@@ -154,8 +151,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
     def remove_account_column(self) -> None:
         if "Account Name" in self.headers_list:
-            print(f"{self.column_widths.pop(-2)=}")
-            print(self.column_widths)
+            self.column_widths.pop(-2)
             self.headers_list.remove("Account Name")
 
     def view_all_operations(self) -> None:

@@ -190,7 +190,7 @@
           </layout>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="HLablelLayout">
+          <layout class="QHBoxLayout" name="HLabelLayout">
            <item>
             <widget class="QLabel" name="status_label">
              <property name="font">
