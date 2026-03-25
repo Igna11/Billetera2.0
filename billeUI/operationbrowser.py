@@ -281,12 +281,12 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                 QtWidgets.QTableWidgetItem(operation.description),
             ]
 
-            if self.accounts_comboBox.currentText() == "All":
-                items.insert(len(items), QtWidgets.QTableWidgetItem(operation.account_name))
-
             # save the account_id and operation_id to be retrieved later
             items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
-            items[0].setData(QtCore.Qt.UserRole + 1, self.acc_id)
+            items[0].setData(QtCore.Qt.UserRole + 1, operation.account_id)
+
+            if self.accounts_comboBox.currentText() == "All":
+                items.insert(len(items), QtWidgets.QTableWidgetItem(operation.account_name))
 
             checkbox = QtWidgets.QTableWidgetItem()
             checkbox.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)

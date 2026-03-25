@@ -59,7 +59,9 @@ class AccountDataAnalyzer(UserAccounts):
     def get_all_operations(self, **kwargs) -> List:
         """Returns an ordered by timestamp list of all existing operations of all accounts of the same currency"""
         accounts_list = UserAccounts.get_all_accounts(user_id=self.user_id, **kwargs)
-        select_template = Template("SELECT *, '$account_name' AS account_name FROM $table_name")
+        select_template = Template(
+            "SELECT *, ? AS 'user_id', $account_id AS 'account_id', '$account_name' AS account_name FROM $table_name"
+        )
 
         operations_selects_list = []
         for account in accounts_list:
@@ -67,6 +69,7 @@ class AccountDataAnalyzer(UserAccounts):
             acc_name = account.account_name
             operations_selects_list.append(
                 select_template.substitute(
+                    account_id="'" + account.account_id + "'",
                     table_name=table_name,
                     account_name=acc_name,
                 )
@@ -83,7 +86,7 @@ class AccountDataAnalyzer(UserAccounts):
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
         try:
-            cur.execute(final_query)
+            cur.execute(final_query, (self.user_id,) * len(accounts_list))
             all_operations = cur.fetchall()
             conn.close()
         except sqlite3.OperationalError as e:
