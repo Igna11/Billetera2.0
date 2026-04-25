@@ -7,7 +7,7 @@ Class to handle the incomes into a given account
 from typing import List, Optional
 from decimal import Decimal
 from src.models.accmodel import UserAccounts
-from src.models.opmodel import OperationsModel, UserOperations
+from src.models.opmodel import OperationsModel, UserOperations, OperationNotFoundError
 
 
 class NegativeAccountTotalError(Exception):
@@ -24,11 +24,24 @@ class OperationHandler(OperationsModel):
     account_id: str
     account: Optional[UserAccounts] = None
     coeff: dict = {"income": 1, "expense": -1, "transfer_in": 1, "transfer_out": -1}
+    twin_operation: Optional[UserOperations] = None
+    diff: Optional[dict] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.account = UserAccounts.get_account_by_id(user_id=self.user_id, account_id=self.account_id)
         self.operation_currency = self.account.account_currency
+        try:
+            self.twin_operation = UserOperations.get_operation_by_id(
+                user_id=self.user_id, account_id=self.account_id, operation_id=self.operation_id
+            )
+            self.diff = {
+                k: v
+                for k, v in self.twin_operation.model_dump().items()
+                if v != self.model_dump().get(k) and v is not None
+            }
+        except OperationNotFoundError:
+            pass
 
     def readjustment(self, account_total: Decimal) -> List:
         """
@@ -124,6 +137,10 @@ class OperationHandler(OperationsModel):
         """
         Handles all possible cases of editions in an operation and manages the impact on the rest of the operations.
         """
+        # In case the edit is not in fields that modify other accounts, then only save that account.
+        if self.diff:
+            if not any(field in self.diff for field in ["operation_datetime", "amount", "cumulative_amount"]):
+                return [self]
         # In case of editing the datetime on top of everything else of a given operation
         older_datetime = min(self.operation_datetime, original_operation.operation_datetime)
 

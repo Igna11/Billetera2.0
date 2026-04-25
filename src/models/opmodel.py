@@ -230,7 +230,7 @@ class UserOperations(OperationsModel):
 
     @classmethod
     def get_operations_list(
-        cls, user_id: str, account_id: str, order_by_datetime: str | None = None
+        cls, user_id: str, account_id: str, order_by_datetime: Literal["ASC", "DESC", None] = None
     ) -> List["UserOperations"]:
         """
         Fetches all operations from db and returns a list of UserOperation objects.
@@ -478,6 +478,54 @@ class UserOperations(OperationsModel):
         subcategories = list(set(subcategories))
 
         return subcategories
+
+    @classmethod
+    def get_operations_by_group(
+        cls, user_id: str, group_id: str, order_by_datetime: Literal["ASC", "DESC", None] = None
+    ) -> List["UserOperations"]:
+        """
+        Fetches all operations from db that belong to a specific group and returns a list of UserOperation objects.
+
+        Args:
+            user_id (str): The unique identifier for the user
+            group_id (str): The unique identifier for the group
+            order_by_datetime (str, optional): Order by datetime ("ASC" or "DESC")
+        Returns:
+            list[UserOperations]: A list of UserOperation objects for a given group.
+        """
+        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", UserOperations._OperationsModel__db_path(user_id)))
+        conn.row_factory = sqlite3.Row
+
+        cur = conn.cursor()
+        cur.execute("SELECT table_name FROM accounts;")
+        table_name_list = [table_name[0] for table_name in cur.fetchall()]
+
+        operations = []
+        for table_name in table_name_list:
+            select_op_query = f"SELECT * FROM {table_name} WHERE group_id = ?"
+            if order_by_datetime == "ASC":
+                select_op_query += " ORDER BY operation_datetime ASC;"
+            elif order_by_datetime == "DESC":
+                select_op_query += " ORDER BY operation_datetime DESC;"
+            else:
+                select_op_query += ";"
+
+            cur.execute(select_op_query, (group_id,))
+            records = cur.fetchall()
+
+            for record in records:
+                record = dict(record)
+                record["user_id"] = user_id
+                # Get account_id and account_name from the table name
+                cur.execute("SELECT account_id, account_name FROM accounts WHERE table_name = ?", (table_name,))
+                account_record = cur.fetchone()
+                if account_record:
+                    record["account_id"] = account_record[0]
+                    record["account_name"] = account_record[1]
+                    operations.append(cls(**record))
+
+        conn.close()
+        return operations
 
     def create(self) -> "UserOperations":
         """
