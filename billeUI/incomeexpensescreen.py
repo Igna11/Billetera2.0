@@ -169,6 +169,8 @@ class IncomeExpenseScreen(QMainWindow):
         """
         if self.group_browser is None:
             self.group_browser = groupbrowser.GroupBrowserWidget(widget=self.widget)
+            # Connect to the groups_updated signal to refresh groups when changes occur
+            self.group_browser.groups_updated.connect(self.refresh_groups_list)
         self.group_browser.show()
 
     def get_list_of_groups_from_db(self) -> list[OperationGroups]:
@@ -216,6 +218,25 @@ class IncomeExpenseScreen(QMainWindow):
         if self.group_combo_box.lineEdit():
             self.group_combo_box.lineEdit().returnPressed.connect(self.create_group)
 
+    def refresh_groups_list(self) -> None:
+        """Refresh the groups list and combo box when groups are updated"""
+        # Store current selection
+        current_text = self.group_combo_box.currentText()
+
+        # Refresh groups from database
+        self.groups_list = self.get_list_of_groups_from_db()
+
+        # Clear and repopulate combo box
+        self.group_combo_box.clear()
+        self.group_combo_box.addItems(self.set_group_combo_box())
+
+        # Try to restore previous selection if it still exists
+        index = self.group_combo_box.findText(current_text)
+        if index >= 0:
+            self.group_combo_box.setCurrentIndex(index)
+        else:
+            self.group_combo_box.setCurrentIndex(0)
+
     ################# Save operations #################
 
     def save(self) -> None:
@@ -224,6 +245,18 @@ class IncomeExpenseScreen(QMainWindow):
         category = self.category_line.text()
         subcategory = self.subcategory_line.text()
         description = self.description_line.text()
+
+        # Get group_id if checkbox is checked and a group is selected
+        group_id = None
+        if self.group_operation_checkBox.isChecked() and self.group_combo_box.isEnabled():
+            selected_group_text = self.group_combo_box.currentText()
+            if selected_group_text:
+                # Find the corresponding group object to get its ID
+                for group in self.groups_list:
+                    if f"{group.group_name} {group.group_currency}" == selected_group_text:
+                        group_id = group.group_id
+                        break
+
         try:
             value = decimal.Decimal(self.quantity_line.text())
             operation = OperationHandler(
@@ -235,6 +268,7 @@ class IncomeExpenseScreen(QMainWindow):
                 category=category,
                 subcategory=subcategory,
                 description=description,
+                group_id=group_id,
             )
             operation.set_account_total()
             cmls = operation.set_cumulatives()

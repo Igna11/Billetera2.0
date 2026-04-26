@@ -15,12 +15,13 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtWidgets import QMainWindow, QLabel
+from PyQt5.QtWidgets import QMainWindow, QLabel, QStyledItemDelegate, QComboBox
 
 from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
 
 from src.models.opmodel import UserOperations
+from src.models.opgroupsmodel import OperationGroups
 from src.ophandlers.deletehandler import DeletionHandler
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
@@ -73,6 +74,47 @@ class PageLink(QLabel):
         return super().mousePressEvent(event)
 
 
+class GroupComboBoxDelegate(QStyledItemDelegate):
+    """Custom delegate for group column with combo box"""
+
+    def __init__(self, groups_list, parent=None):
+        super().__init__(parent)
+        self.groups_list = groups_list  # List of (group_id, group_name) tuples
+
+    def createEditor(self, parent, option, index):
+        """Create the combo box editor"""
+        editor = QComboBox(parent)
+        editor.addItem("N/A", None)  # Option to remove from group
+        for group_id, group_name in self.groups_list:
+            editor.addItem(group_name, group_id)
+        return editor
+
+    def setEditorData(self, editor, index):
+        """Set the current value in the editor"""
+        current_text = index.model().data(index, Qt.DisplayRole)
+        if current_text == "N/A":
+            editor.setCurrentIndex(0)
+        else:
+            # Find the index of the current group name
+            for i in range(1, editor.count()):
+                if editor.itemText(i) == current_text:
+                    editor.setCurrentIndex(i)
+                    break
+
+    def setModelData(self, editor, model, index):
+        """Save the data from the editor back to the model"""
+        if editor.currentIndex() == 0:
+            # "N/A" selected - remove group
+            model.setData(index, "N/A", Qt.DisplayRole)
+            model.setData(index, None, Qt.UserRole)  # Store group_id in UserRole
+        else:
+            # Group selected
+            group_name = editor.currentText()
+            group_id = editor.currentData()
+            model.setData(index, group_name, Qt.DisplayRole)
+            model.setData(index, group_id, Qt.UserRole)  # Store group_id in UserRole
+
+
 class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
     """
     Screen where inputs for the operations are managed
@@ -89,7 +131,15 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.acc_list.extend(["All"])
         self.accounts_comboBox.addItems(self.acc_list)
 
-        self.column_widths = [135, 100, 90, 90, 100, 130, 400, 40]
+        # Load groups for the combo box delegate
+        self.groups_list = []
+        try:
+            groups = OperationGroups.get_groups_list(user_id=self.widget.user_object.user_id, status="open")
+            self.groups_list = [(group.group_id, group.group_name) for group in groups]
+        except Exception:
+            self.groups_list = []
+
+        self.column_widths = [135, 100, 90, 90, 100, 130, 400, 150, 40]
         self.headers_list = [
             "Date & Time",
             "Cumulatives",
@@ -98,6 +148,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             "Category",
             "Subcategory",
             "Description",
+            "Group",
             "Select",
         ]
 
@@ -119,6 +170,9 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.next_page_label.clicked.connect(self.next_page)
         self.prev_page_label.clicked.connect(self.prev_page)
 
+        # Set up the group column delegate
+        self.group_delegate = GroupComboBoxDelegate(self.groups_list, self)
+
         # Pupulation of the tables with operations data
         self.set_table_data(self.accounts_comboBox.currentIndex())
         self.accounts_comboBox.currentIndexChanged.connect(self.set_table_data)
@@ -126,7 +180,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         # Filters
         self.init_header_filter(
             self.operation_table_widget,
-            filterable_columns=([3, 4, 5] if self.accounts_comboBox.currentText != "All" else [3, 4, 5, 7]),
+            filterable_columns=([3, 4, 5, 7] if self.accounts_comboBox.currentText != "All" else [3, 4, 5, 7, 8]),
             operations_list=self.filter_operations(self.operations_list),
         )
         self.set_filter_callback(lambda: self.set_table_data(self.accounts_comboBox.currentIndex()))
@@ -224,6 +278,10 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
         self.operation_table_widget.setColumnCount(len(self.headers_list))
         self.operation_table_widget.setHorizontalHeaderLabels(self.headers_list)
+
+        # Set the delegate for the group column (column 7)
+        self.operation_table_widget.setItemDelegateForColumn(7, self.group_delegate)
+
         self.total_label.setText("<b>Total: Empty</b>")
 
         filtered_operations_list = self.filter_operations(self.operations_list)
@@ -285,6 +343,18 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             items[0].setData(QtCore.Qt.UserRole, operation.operation_id)
             items[0].setData(QtCore.Qt.UserRole + 1, operation.account_id)
 
+            # Add group name
+            group_name = "N/A"
+            if operation.group_id:
+                try:
+                    group = OperationGroups.get_group_by_id(self.widget.user_object.user_id, operation.group_id)
+                    group_name = group.group_name
+                except Exception:
+                    group_name = "N/A"
+            group_item = QtWidgets.QTableWidgetItem(group_name)
+            group_item.setData(QtCore.Qt.UserRole, operation.group_id)  # Store group_id for later use
+            items.append(group_item)
+
             if self.accounts_comboBox.currentText() == "All":
                 items.insert(len(items), QtWidgets.QTableWidgetItem(operation.account_name))
 
@@ -337,7 +407,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
     def cell_change(self, row, column) -> None:
         """detects when a cell in a row has a change"""
-        checkbox_column: int = 7
+        checkbox_column: int = 8
         if column != checkbox_column:
             self.operation_table_widget.item(row, column)
             self.rows_changed.add(row)
@@ -372,6 +442,9 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                 "category": self.operation_table_widget.item(row_idx, 4).text(),
                 "subcategory": self.operation_table_widget.item(row_idx, 5).text(),
                 "description": self.operation_table_widget.item(row_idx, 6).text(),
+                "group_id": self.operation_table_widget.item(row_idx, 7).data(
+                    QtCore.Qt.UserRole
+                ),  # Get the edited group_id
             }
 
             edited_op = OperationHandler(**row_data)
@@ -449,6 +522,17 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                     row_data.append(item.text() if item else "")
                 text_data += "\t".join(row_data) + "\n"
             QtWidgets.QApplication.clipboard().setText(text_data)
+
+    def refresh_groups_list(self) -> None:
+        """Refresh the groups list for the combo box delegate"""
+        try:
+            groups = OperationGroups.get_groups_list(user_id=self.widget.user_object.user_id, status="open")
+            self.groups_list = [(group.group_id, group.group_name) for group in groups]
+            # Update the delegate with the new groups list
+            self.group_delegate.groups_list = self.groups_list
+        except Exception:
+            self.groups_list = []
+            self.group_delegate.groups_list = []
 
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""

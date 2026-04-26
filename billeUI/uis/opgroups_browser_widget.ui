@@ -7,17 +7,24 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>297</height>
+    <height>350</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0">
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:12pt; font-weight:600; color:#8f8f8f;&quot;&gt;Operation Groups&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="search_line_edit">
+     <property name="placeholderText">
+      <string>Search groups by name...</string>
      </property>
     </widget>
    </item>

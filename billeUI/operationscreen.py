@@ -373,6 +373,18 @@ class OperationScreen(QMainWindow):
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
         self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
+    def refresh_all_groups(self) -> None:
+        """Refresh groups in all open income/expense screens and operation browsers"""
+        # Iterate through all widgets in the stacked widget
+        for i in range(self.widget.count()):
+            current_widget = self.widget.widget(i)
+            # Check if this is an income/expense screen and refresh its groups
+            if isinstance(current_widget, incomeexpensescreen.IncomeExpenseScreen):
+                current_widget.refresh_groups_list()
+            # Check if this is an operation browser and refresh its groups
+            elif isinstance(current_widget, operationbrowser.OperationBrowser):
+                current_widget.refresh_groups_list()
+
     def back(self) -> None:
         """Returns to the LoginScreen Menu"""
         login_screen = loginscreen.LoginScreen(widget=self.widget)
