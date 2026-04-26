@@ -24,6 +24,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QRadioButton,
     QTextEdit,
+    QGridLayout,
 )
 from src.models.opmodel import InvalidAccountNameError
 from src.models.opgroupsmodel import OperationGroups
@@ -63,84 +64,155 @@ class GroupDataRow(QWidget):
         self.new_values = {}
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_Hover, True)
+        
+        # Minimal card frame with clean styling
         self.frame = QFrame(self)
         self.frame.setObjectName("GroupRowFrame")
         self.frame.setStyleSheet(
             """
             QFrame#GroupRowFrame {
-                background-color: transparent;
-                border-radius: 6px;
+                background-color: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                margin: 2px;
             }
             QFrame#GroupRowFrame:hover {
-                background-color: #e6f2ff;
-                border: 1px solid #cccccc;
+                background-color: #f8f9fa;
+                border: 1px solid #d0d0d0;
             }
         """
         )
 
-        # Labels
-        font = QFont()
-        font.setPointSize(8)
+        # Clean, readable fonts
+        title_font = QFont()
+        title_font.setPointSize(10)
+        title_font.setBold(True)
+        
+        body_font = QFont()
+        body_font.setPointSize(9)
+        
+        balance_font = QFont()
+        balance_font.setPointSize(9)
+        balance_font.setBold(True)
 
-        # name_line
-        self.name_label = QLabel(f"<b>{self.group_name}</b>")
+        # Group name (clean and prominent)
+        self.name_label = QLabel(f"{self.group_name}")
+        self.name_label.setFont(title_font)
+        self.name_label.setStyleSheet("color: #333;")
         self.name_line_edit = QLineEdit(self)
         self.name_line_edit.setText(self.group_name)
         self.name_line_edit.setPlaceholderText("Group name")
+        self.name_line_edit.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 2px;
+                background: white;
+            }
+        """)
         self.name_line_edit.hide()
         self.name_line_edit.returnPressed.connect(self.show_qlabel)
         self.name_line_edit.installEventFilter(self)
 
-        # Category, subcategory, description labels
-        self.category_label = QLabel(f"<b>Category:</b> {self.category or 'N/A'}")
-        self.category_label.setFont(font)
+        # Category and Subcategory (compact, side by side)
+        self.category_label = QLabel(f"Cat: {self.category or 'N/A'}")
+        self.category_label.setFont(body_font)
+        self.category_label.setStyleSheet("color: #666;")
         self.category_line_edit = QLineEdit(self)
         self.category_line_edit.setText(self.category)
         self.category_line_edit.setPlaceholderText("Category")
+        self.category_line_edit.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 2px;
+                background: white;
+            }
+        """)
         self.category_line_edit.hide()
         self.category_line_edit.returnPressed.connect(self.show_qlabel)
         self.category_line_edit.installEventFilter(self)
 
-        self.subcategory_label = QLabel(f"<b>Subcategory:</b> {self.subcategory or 'N/A'}")
-        self.subcategory_label.setFont(font)
+        self.subcategory_label = QLabel(f"Sub: {self.subcategory or 'N/A'}")
+        self.subcategory_label.setFont(body_font)
+        self.subcategory_label.setStyleSheet("color: #666;")
         self.subcategory_line_edit = QLineEdit(self)
         self.subcategory_line_edit.setText(self.subcategory)
         self.subcategory_line_edit.setPlaceholderText("Subcategory")
+        self.subcategory_line_edit.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 2px;
+                background: white;
+            }
+        """)
         self.subcategory_line_edit.hide()
         self.subcategory_line_edit.returnPressed.connect(self.show_qlabel)
         self.subcategory_line_edit.installEventFilter(self)
 
         description_text = self.description or "No description"
-        if len(description_text) > 100:
-            description_text = description_text[:97] + "..."
-        self.description_label = QLabel(f"<b>Description:</b> {description_text}")
-        self.description_label.setFont(font)
-        self.description_label.setWordWrap(True)
+        self.description_label = QLabel(f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}")
+        self.description_label.setFont(body_font)
+        self.description_label.setStyleSheet("color: #888; font-style: italic;")
+        self.description_label.hide()  # Hidden by default
         self.description_label.setToolTip(self.description or "No description")
         self.description_line_edit = QTextEdit(self)
         self.description_line_edit.setText(self.description)
         self.description_line_edit.setPlaceholderText("Description")
-        self.description_line_edit.setMaximumHeight(80)
+        self.description_line_edit.setMaximumHeight(50)
+        self.description_line_edit.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 2px;
+                background: white;
+            }
+        """)
         self.description_line_edit.hide()
         self.description_line_edit.installEventFilter(self)
 
-        # Balance label
+        # Balance (minimal with simple color coding)
         balance = self.calculate_group_balance()
         balance_str = currency_format(balance)
-        balance_color = "green" if balance > 0 else "red" if balance < 0 else "black"
-        self.balance_label = QLabel(f"<b>Balance:</b> <font color='{balance_color}'>{balance_str}</font>")
-        self.balance_label.setFont(font)
+        balance_color = "#28a745" if balance > 0 else "#dc3545" if balance < 0 else "#6c757d"
+        self.balance_label = QLabel(f"{balance_str}")
+        self.balance_label.setFont(balance_font)
+        self.balance_label.setStyleSheet(f"color: {balance_color};")
+        self.balance_label.setAlignment(Qt.AlignCenter)
 
-        # Buttons and Icons
+        # Buttons with minimal styling
         self.edit_btn = QPushButton()
         self.edit_btn.setIcon(QIcon(os.path.join(ICONSPATH, "edit.svg")))
         self.edit_btn.clicked.connect(self.enable_edit_mode)
         self.edit_btn.setToolTip("Edit group")
+        self.edit_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 4px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
 
         self.delete_btn = QPushButton()
         self.delete_btn.setIcon(QIcon(os.path.join(ICONSPATH, "delete.svg")))
         self.delete_btn.setToolTip("Delete group")
         self.delete_btn.clicked.connect(self.delete_group)
+        self.delete_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 4px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
 
         # self.disable_btn = QPushButton()
         # self.disable_btn.setIcon(QIcon(os.path.join(ICONSPATH, "disable.svg")))
@@ -148,34 +220,46 @@ class GroupDataRow(QWidget):
 
         self.enable_disable_btn = QRadioButton()
         self.enable_disable_btn.setToolTip("Disable group")
-        # if group.is_active:
-        #    self.enable_disable_btn.setChecked(True)
-        # self.enable_disable_btn.clicked.connect(self.enable_n_disable_group)
+        self.enable_disable_btn.setStyleSheet("""
+            QRadioButton::indicator {
+                width: 14px;
+                height: 14px;
+            }
+        """)
 
-        # Layouts
-        text_layout = QVBoxLayout()
-        text_layout.addWidget(self.name_label)
-        text_layout.addWidget(self.name_line_edit)
-        text_layout.addWidget(self.category_label)
-        text_layout.addWidget(self.category_line_edit)
-        text_layout.addWidget(self.subcategory_label)
-        text_layout.addWidget(self.subcategory_line_edit)
-        text_layout.addWidget(self.description_label)
-        text_layout.addWidget(self.description_line_edit)
-        text_layout.addWidget(self.balance_label)
-
+        # Minimal grid layout for compact arrangement
+        grid_layout = QGridLayout()
+        grid_layout.setContentsMargins(8, 6, 8, 6)
+        grid_layout.setSpacing(6)
+        
+        # Row 0: Group name (spans all columns)
+        grid_layout.addWidget(self.name_label, 0, 0, 1, 4)
+        grid_layout.addWidget(self.name_line_edit, 0, 0, 1, 4)
+        
+        # Row 1: Category | Subcategory | Balance (3 columns)
+        grid_layout.addWidget(self.category_label, 1, 0)
+        grid_layout.addWidget(self.category_line_edit, 1, 0)
+        grid_layout.addWidget(self.subcategory_label, 1, 1)
+        grid_layout.addWidget(self.subcategory_line_edit, 1, 1)
+        grid_layout.addWidget(self.balance_label, 1, 2, 1, 2)  # Balance spans 2 columns
+        
+        # Row 2: Description (hidden by default, spans all columns)
+        grid_layout.addWidget(self.description_label, 2, 0, 1, 4)
+        grid_layout.addWidget(self.description_line_edit, 2, 0, 1, 4)
+        
+        # Buttons in horizontal layout at the bottom right with extra margins
         btn_layout = QHBoxLayout()
-        btn_layout.addWidget(self.delete_btn)
-        btn_layout.addWidget(self.edit_btn)
+        btn_layout.addStretch()
         btn_layout.addWidget(self.enable_disable_btn)
-
-        inner_layout = QHBoxLayout()
-        inner_layout.addLayout(text_layout)
-        inner_layout.addStretch()
-        inner_layout.addLayout(btn_layout)
-        inner_layout.setContentsMargins(5, 3, 5, 3)
-
-        self.frame.setLayout(inner_layout)
+        btn_layout.addWidget(self.edit_btn)
+        btn_layout.addWidget(self.delete_btn)
+        btn_layout.setContentsMargins(8, 8, 8, 8)  # Add extra space around buttons
+        
+        # Main vertical layout
+        main_layout = QVBoxLayout(self.frame)
+        main_layout.addLayout(grid_layout)
+        main_layout.addLayout(btn_layout)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         # outer layout
         outer_layout = QVBoxLayout(self)
@@ -200,11 +284,12 @@ class GroupDataRow(QWidget):
             return Decimal("0")
 
     def refresh_balance(self) -> None:
-        """Refresh the balance display"""
+        """Refresh the balance display with minimal styling"""
         balance = self.calculate_group_balance()
         balance_str = currency_format(balance)
-        balance_color = "green" if balance > 0 else "red" if balance < 0 else "black"
-        self.balance_label.setText(f"<b>Balance:</b> <font color='{balance_color}'>{balance_str}</font>")
+        balance_color = "#28a745" if balance > 0 else "#dc3545" if balance < 0 else "#6c757d"
+        self.balance_label.setText(f"{balance_str}")
+        self.balance_label.setStyleSheet(f"color: {balance_color}; font-weight: bold;")
 
     def refresh_group_info(self) -> None:
         """Refresh all group information from the database"""
@@ -226,16 +311,19 @@ class GroupDataRow(QWidget):
                 "description": self.description,
             }
 
-            # Update labels
-            self.name_label.setText(f"<b>{self.group_name}</b>")
-            self.category_label.setText(f"<b>Category:</b> {self.category or 'N/A'}")
-            self.subcategory_label.setText(f"<b>Subcategory:</b> {self.subcategory or 'N/A'}")
+            # Update labels with minimal styling
+            self.name_label.setText(f"{self.group_name}")
+            self.name_label.setStyleSheet("color: #333; font-weight: bold;")
+            self.category_label.setText(f"Cat: {self.category or 'N/A'}")
+            self.category_label.setStyleSheet("color: #666;")
+            self.subcategory_label.setText(f"Sub: {self.subcategory or 'N/A'}")
+            self.subcategory_label.setStyleSheet("color: #666;")
 
             description_text = self.description or "No description"
-            if len(description_text) > 100:
-                description_text = description_text[:97] + "..."
-            self.description_label.setText(f"<b>Description:</b> {description_text}")
+            self.description_label.setText(f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}")
             self.description_label.setToolTip(self.description or "No description")
+            self.description_label.setStyleSheet("color: #888; font-style: italic;")
+            self.description_label.hide()  # Keep description hidden by default
 
             # Update line edit values too
             self.name_line_edit.setText(self.group_name)
@@ -243,7 +331,7 @@ class GroupDataRow(QWidget):
             self.subcategory_line_edit.setText(self.subcategory)
             self.description_line_edit.setText(self.description)
 
-            # Update balance
+            # Update balance with minimal styling
             self.refresh_balance()
 
         except Exception:
@@ -281,7 +369,7 @@ class GroupDataRow(QWidget):
         self.subcategory_line_edit.hide()
         self.subcategory_label.show()
         self.description_line_edit.hide()
-        self.description_label.show()
+        self.description_label.hide()  # Hide description label after canceling
 
         # Clear focus from line edits to ensure proper event propagation
         self.name_line_edit.clearFocus()
@@ -298,15 +386,13 @@ class GroupDataRow(QWidget):
         new_subcategory = self.subcategory_line_edit.text().strip()
         new_description = self.description_line_edit.toPlainText().strip()
 
-        # Update labels
-        self.name_label.setText(f"<b>{new_name}</b>")
-        self.category_label.setText(f"<b>Category:</b> {new_category or 'N/A'}")
-        self.subcategory_label.setText(f"<b>Subcategory:</b> {new_subcategory or 'N/A'}")
+        # Update labels with minimal styling
+        self.name_label.setText(f"{new_name}")
+        self.category_label.setText(f"Cat: {new_category or 'N/A'}")
+        self.subcategory_label.setText(f"Sub: {new_subcategory or 'N/A'}")
 
         description_text = new_description or "No description"
-        if len(description_text) > 100:
-            description_text = description_text[:97] + "..."
-        self.description_label.setText(f"<b>Description:</b> {description_text}")
+        self.description_label.setText(f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}")
         self.description_label.setToolTip(new_description or "No description")
 
         # Check if each field changed and apply individual styling
@@ -315,30 +401,30 @@ class GroupDataRow(QWidget):
         # Name field styling
         if new_name != self.original_values["group_name"]:
             changed_fields["group_name"] = new_name
-            self.name_label.setStyleSheet("color: orange; font-weight: bold; font-style: italic;")
+            self.name_label.setStyleSheet("color: #e67e22; font-weight: bold; font-style: italic;")
         else:
-            self.name_label.setStyleSheet("color: black; font-weight: bold;")
+            self.name_label.setStyleSheet("color: #333; font-weight: bold;")
 
         # Category field styling
         if new_category != self.original_values["category"]:
             changed_fields["category"] = new_category
-            self.category_label.setStyleSheet("color: orange; font-weight: bold; font-style: italic;")
+            self.category_label.setStyleSheet("color: #e67e22; font-weight: bold; font-style: italic;")
         else:
-            self.category_label.setStyleSheet("color: black; font-weight: bold;")
+            self.category_label.setStyleSheet("color: #666;")
 
         # Subcategory field styling
         if new_subcategory != self.original_values["subcategory"]:
             changed_fields["subcategory"] = new_subcategory
-            self.subcategory_label.setStyleSheet("color: orange; font-weight: bold; font-style: italic;")
+            self.subcategory_label.setStyleSheet("color: #e67e22; font-weight: bold; font-style: italic;")
         else:
-            self.subcategory_label.setStyleSheet("color: black; font-weight: bold;")
+            self.subcategory_label.setStyleSheet("color: #666;")
 
         # Description field styling
         if new_description != self.original_values["description"]:
             changed_fields["description"] = new_description
-            self.description_label.setStyleSheet("color: orange; font-weight: bold; font-style: italic;")
+            self.description_label.setStyleSheet("color: #e67e22; font-weight: bold; font-style: italic;")
         else:
-            self.description_label.setStyleSheet("color: black; font-weight: bold;")
+            self.description_label.setStyleSheet("color: #888; font-style: italic;")
 
         is_modified = len(changed_fields) > 0
         self.new_values = changed_fields
@@ -351,7 +437,7 @@ class GroupDataRow(QWidget):
         self.subcategory_line_edit.hide()
         self.subcategory_label.show()
         self.description_line_edit.hide()
-        self.description_label.show()
+        self.description_label.hide()  # Hide description label after editing
 
         # Emit signal with changed fields
         self.group_modified.emit(self.group_id, changed_fields, is_modified)
@@ -434,6 +520,18 @@ class GroupDataRow(QWidget):
                 # If not in edit mode, let the event propagate to parent
         return super().eventFilter(obj, event)
 
+    def enterEvent(self, event) -> None:
+        """Show description on hover"""
+        if self.description and not self.description_line_edit.isVisible():
+            self.description_label.show()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        """Hide description when not hovering"""
+        if not self.description_line_edit.isVisible():
+            self.description_label.hide()
+        super().leaveEvent(event)
+
 
 class GroupBrowserWidget(QWidget):
     """
@@ -496,11 +594,11 @@ class GroupBrowserWidget(QWidget):
 
                 EditOperationGroupCommand(**command_params).execute()
 
-                # Reset all label styling to black after saving
-                row.name_label.setStyleSheet("color: black; font-weight: bold;")
-                row.category_label.setStyleSheet("color: black; font-weight: bold;")
-                row.subcategory_label.setStyleSheet("color: black; font-weight: bold;")
-                row.description_label.setStyleSheet("color: black; font-weight: bold;")
+                # Reset all label styling to minimal design after saving
+                row.name_label.setStyleSheet("color: #333; font-weight: bold;")
+                row.category_label.setStyleSheet("color: #666;")
+                row.subcategory_label.setStyleSheet("color: #666;")
+                row.description_label.setStyleSheet("color: #888; font-style: italic;")
 
                 # Update the row's stored values
                 if "group_name" in row.new_values:
