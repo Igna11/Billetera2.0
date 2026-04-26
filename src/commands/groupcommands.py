@@ -30,6 +30,9 @@ class EditOperationGroupCommand(OperationGroups):
     group_name: Optional[str] = None
     group_currency: Optional[str] = None
     original_amount: Optional[Decimal] = None
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    description: Optional[str] = None
     status: Optional[Literal["open", "closed", "cancelled"]] = None
 
     def execute(self):
@@ -37,6 +40,9 @@ class EditOperationGroupCommand(OperationGroups):
         field_check_list = [
             self.group_name,
             self.group_currency,
+            self.category,
+            self.subcategory,
+            self.description,
             self.status,
         ]
 
@@ -51,6 +57,12 @@ class EditOperationGroupCommand(OperationGroups):
             oper_group.group_currency = self.group_currency
         if self.original_amount:
             oper_group.original_amount = self.original_amount
+        if self.category:
+            oper_group.category = self.category
+        if self.subcategory:
+            oper_group.subcategory = self.subcategory
+        if self.description:
+            oper_group.description = self.description
         if self.status:
             oper_group.status = self.status
 
