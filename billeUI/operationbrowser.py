@@ -15,7 +15,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtWidgets import QMainWindow, QLabel, QStyledItemDelegate, QComboBox
+from PyQt5.QtWidgets import QMainWindow, QLabel, QStyledItemDelegate, QComboBox, QCompleter
 
 from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
@@ -82,11 +82,25 @@ class GroupComboBoxDelegate(QStyledItemDelegate):
         self.groups_list = groups_list  # List of (group_id, group_name) tuples
 
     def createEditor(self, parent, option, index):
-        """Create the combo box editor"""
+        """Create the combo box editor with search functionality and limit to 10 items"""
         editor = QComboBox(parent)
-        editor.addItem("N/A", None)  # Option to remove from group
-        for group_id, group_name in self.groups_list:
+        editor.setEditable(True)  # Allow typing to search
+
+        # Add "N/A" option
+        editor.addItem("N/A", None)
+
+        # Limit to 10 groups maximum
+        max_groups = 10
+        for i, (group_id, group_name) in enumerate(self.groups_list[:max_groups]):
             editor.addItem(group_name, group_id)
+
+        # Add completer for search functionality
+        completer = QCompleter(editor)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchContains)
+        completer.setModel(editor.model())
+        editor.setCompleter(completer)
+
         return editor
 
     def setEditorData(self, editor, index):
@@ -95,22 +109,40 @@ class GroupComboBoxDelegate(QStyledItemDelegate):
         if current_text == "N/A":
             editor.setCurrentIndex(0)
         else:
-            # Find the index of the current group name
+            # Find the index of the current group name in the dropdown
+            found = False
             for i in range(1, editor.count()):
                 if editor.itemText(i) == current_text:
                     editor.setCurrentIndex(i)
+                    found = True
                     break
+
+            # If not found in the dropdown (because it's beyond the first 10),
+            # set it as the text directly
+            if not found:
+                editor.setEditText(current_text)
 
     def setModelData(self, editor, model, index):
         """Save the data from the editor back to the model"""
-        if editor.currentIndex() == 0:
+        current_text = editor.currentText()
+
+        if current_text == "N/A" or editor.currentIndex() == 0:
             # "N/A" selected - remove group
             model.setData(index, "N/A", Qt.DisplayRole)
             model.setData(index, None, Qt.UserRole)  # Store group_id in UserRole
         else:
-            # Group selected
-            group_name = editor.currentText()
+            # Group selected or typed
+            group_name = current_text
             group_id = editor.currentData()
+
+            # If group_id is None (user typed a group not in dropdown),
+            # search for it in the full groups_list
+            if group_id is None:
+                for gid, gname in self.groups_list:
+                    if gname == group_name:
+                        group_id = gid
+                        break
+
             model.setData(index, group_name, Qt.DisplayRole)
             model.setData(index, group_id, Qt.UserRole)  # Store group_id in UserRole
 
