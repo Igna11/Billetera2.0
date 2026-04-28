@@ -74,6 +74,7 @@ class OperationScreen(QMainWindow):
         # variables for the pie chart
         self.chart_mode = "month"
         self.chart_type = "expense"
+        self.operation_mode = "flow"  # Can be "flow" or "net"
         # self.chart_period = "month"
         self.curr_datetime = datetime.now()
         self.selected_datetime = self.curr_datetime
@@ -104,6 +105,7 @@ class OperationScreen(QMainWindow):
             (self.previous_month_button, self.previous_month_chart),
             (self.next_month_button, self.next_month_chart),
             (self.reset_month_button, self.current_month_chart),
+            (self.toggle_operation_mode_button, self.toggle_operation_mode),
             # browsing accounts and operations buttons
             (self.browse_account_button, self.browse_operations),
             (self.account_button, self.browse_accounts),
@@ -217,12 +219,15 @@ class OperationScreen(QMainWindow):
         self.period_dict = {}  # resets de period dict to empty
         self.chart_mode = "month"  # resets the chart mode to month
         self.chart_type = "expense"
-        data_inner, data_outer = piechartfunctions.load_data(
+        self.operation_mode = "flow"  # reset to flow mode
+        self.toggle_operation_mode_button.setText("Flow")
+        data_inner, data_outer, category_data = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
             chart_mode=self.chart_mode,
             chart_type=self.chart_type,
             time_period=self.curr_datetime,
             currency=self.currency,
+            operation_mode=self.operation_mode,
         )
         chart_title = piechartfunctions.update_n_format_chart_title(
             user_id=self.widget.user_object.user_id,
@@ -230,6 +235,8 @@ class OperationScreen(QMainWindow):
             time_period=self.selected_datetime,
             chart_mode=self.chart_mode,
             chart_type=self.chart_type,
+            operation_mode=self.operation_mode,
+            category_data=category_data,
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
@@ -238,12 +245,13 @@ class OperationScreen(QMainWindow):
     def next_month_chart(self):
         """Changes to a pie chart for the next month"""
         self.selected_datetime = piechartfunctions.get_next_month(self.selected_datetime)
-        data_inner, data_outer = piechartfunctions.load_data(
+        data_inner, data_outer, category_data = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
             chart_mode="month",
             chart_type=self.chart_type,
             time_period=self.selected_datetime,
             currency=self.currency,
+            operation_mode=self.operation_mode,
         )
         chart_title = piechartfunctions.update_n_format_chart_title(
             user_id=self.widget.user_object.user_id,
@@ -251,6 +259,8 @@ class OperationScreen(QMainWindow):
             time_period=self.selected_datetime,
             chart_mode="month",
             chart_type=self.chart_type,
+            operation_mode=self.operation_mode,
+            category_data=category_data,
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
@@ -259,12 +269,13 @@ class OperationScreen(QMainWindow):
     def previous_month_chart(self):
         """Changes to a pie chart for the previus month"""
         self.selected_datetime = piechartfunctions.get_prev_month(self.selected_datetime)
-        data_inner, data_outer = piechartfunctions.load_data(
+        data_inner, data_outer, category_data = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
             chart_mode="month",
             chart_type=self.chart_type,
             time_period=self.selected_datetime,
             currency=self.currency,
+            operation_mode=self.operation_mode,
         )
         chart_title = piechartfunctions.update_n_format_chart_title(
             user_id=self.widget.user_object.user_id,
@@ -272,6 +283,8 @@ class OperationScreen(QMainWindow):
             time_period=self.selected_datetime,
             chart_mode="month",
             chart_type=self.chart_type,
+            operation_mode=self.operation_mode,
+            category_data=category_data,
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
@@ -289,12 +302,13 @@ class OperationScreen(QMainWindow):
             self.chart_type = "expense"
         elif self.chart_type == "expense":
             self.chart_type = "income"
-        data_inner, data_outer = piechartfunctions.load_data(
+        data_inner, data_outer, category_data = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
             chart_mode=self.chart_mode,
             chart_type=self.chart_type,
             time_period=stime,
             currency=self.currency,
+            operation_mode=self.operation_mode,
         )
         chart_title = piechartfunctions.update_n_format_chart_title(
             user_id=self.widget.user_object.user_id,
@@ -302,6 +316,45 @@ class OperationScreen(QMainWindow):
             time_period=stime,
             chart_mode=self.chart_mode,
             chart_type=self.chart_type,
+            operation_mode=self.operation_mode,
+            category_data=category_data,
+        )
+        self.chart.setTitle(chart_title)
+        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
+
+    def toggle_operation_mode(self):
+        """Toggles between flow operations and net operations for the pie chart"""
+        # Toggle the operation mode
+        if self.operation_mode == "flow":
+            self.operation_mode = "net"
+            self.toggle_operation_mode_button.setText("Net")
+        else:
+            self.operation_mode = "flow"
+            self.toggle_operation_mode_button.setText("Flow")
+
+        # if custom period is being used, switch with custom period
+        if self.period_dict:
+            stime = self.period_dict
+        else:
+            stime = self.selected_datetime
+
+        data_inner, data_outer, category_data = piechartfunctions.load_data(
+            user_id=self.widget.user_object.user_id,
+            chart_mode=self.chart_mode,
+            chart_type=self.chart_type,
+            time_period=stime,
+            currency=self.currency,
+            operation_mode=self.operation_mode,
+        )
+        chart_title = piechartfunctions.update_n_format_chart_title(
+            user_id=self.widget.user_object.user_id,
+            currency=self.currency,
+            time_period=stime,
+            chart_mode=self.chart_mode,
+            chart_type=self.chart_type,
+            operation_mode=self.operation_mode,
+            category_data=category_data,
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)
@@ -329,12 +382,13 @@ class OperationScreen(QMainWindow):
                 "initial": str(self.custom_initial_date),
                 "final": str(self.custom_final_date),
             }
-            data_inner, data_outer = piechartfunctions.load_data(
+            data_inner, data_outer, category_data = piechartfunctions.load_data(
                 user_id=self.widget.user_object.user_id,
                 chart_mode=self.chart_mode,
                 chart_type=self.chart_type,
                 time_period=self.period_dict,
                 currency=self.currency,
+                operation_mode=self.operation_mode,
             )
             chart_title = piechartfunctions.update_n_format_chart_title(
                 user_id=self.widget.user_object.user_id,
@@ -355,12 +409,13 @@ class OperationScreen(QMainWindow):
             stime = self.selected_datetime
         self.currency = self.currency_combobox.currentText()
 
-        data_inner, data_outer = piechartfunctions.load_data(
+        data_inner, data_outer, category_data = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
             chart_mode=self.chart_mode,
             chart_type=self.chart_type,
             time_period=stime,
             currency=self.currency,
+            operation_mode=self.operation_mode,
         )
         chart_title = piechartfunctions.update_n_format_chart_title(
             user_id=self.widget.user_object.user_id,
@@ -368,6 +423,8 @@ class OperationScreen(QMainWindow):
             time_period=stime,
             chart_mode=self.chart_mode,
             chart_type=self.chart_type,
+            operation_mode=self.operation_mode,
+            category_data=category_data,
         )
         self.chart.setTitle(chart_title)
         self.chart.generate_chart(data_inner, data_outer, self.chart_type)

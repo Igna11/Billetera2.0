@@ -6,6 +6,7 @@ Auxiliary functions to generate the PieCharts
 """
 from typing import Tuple, Dict
 from datetime import datetime, timedelta, UTC
+from decimal import Decimal
 
 from src.datahandler.datahandler import AccountDataAnalyzer
 
@@ -52,7 +53,12 @@ def _get_month_interval(year: int, month: int) -> Tuple[datetime, datetime]:
 
 
 def load_data(
-    user_id: str, currency: str, time_period: datetime | Dict[str, str], chart_mode: str, chart_type: str = "expense"
+    user_id: str,
+    currency: str,
+    time_period: datetime | Dict[str, str],
+    chart_mode: str,
+    chart_type: str = "expense",
+    operation_mode: str = "flow",
 ) -> tuple:
     """
     Loads the raw data in the given currency and for the given filters in order to be passed to the chart.
@@ -62,15 +68,23 @@ def load_data(
         time_period (datetime.datetime): Used to generate the month interval for the chart
         chart_mode (str): Can be 'month' or 'period', where period is a custom period selected by the user.
         chart_type (str): Can be "income" or "expense"
+        operation_mode (str): Can be "flow" for flow operations or "net" for net operations
     Returns:
         data_outer: category data
         data_inner: subcategory data
     """
+    # Choose the appropriate method based on operation_mode
+    categorize_method = (
+        AccountDataAnalyzer.categorize_flow_operations
+        if operation_mode == "flow"
+        else AccountDataAnalyzer.categorize_net_operations
+    )
+
     if chart_mode == "month":
         # set the time frame
         from_datetime, to_datetime = _get_month_interval(time_period.year, time_period.month)
 
-        data_outer = AccountDataAnalyzer.categorize_flow_operations(
+        data_outer = categorize_method(
             user_id=user_id,
             from_datetime=from_datetime,
             to_datetime=to_datetime,
@@ -78,7 +92,7 @@ def load_data(
             data_type="category",
             currency=currency,
         )
-        data_inner = AccountDataAnalyzer.categorize_flow_operations(
+        data_inner = categorize_method(
             user_id=user_id,
             from_datetime=from_datetime,
             to_datetime=to_datetime,
@@ -89,7 +103,7 @@ def load_data(
 
     elif chart_mode == "period":
         ci_date, cf_date = time_period.values()
-        data_outer = AccountDataAnalyzer.categorize_flow_operations(
+        data_outer = categorize_method(
             user_id=user_id,
             from_datetime=ci_date,
             to_datetime=cf_date,
@@ -97,7 +111,7 @@ def load_data(
             data_type="category",
             currency=currency,
         )
-        data_inner = AccountDataAnalyzer.categorize_flow_operations(
+        data_inner = categorize_method(
             user_id=user_id,
             from_datetime=ci_date,
             to_datetime=cf_date,
@@ -106,8 +120,10 @@ def load_data(
             currency=currency,
         )
     else:
-        raise ValueError("Valid types: 'expense', 'income'. Valid modes: 'month', 'period'")
-    return data_inner, data_outer
+        raise ValueError(
+            "Valid types: 'expense', 'income'. Valid modes: 'month', 'period'. Valid operation modes: 'flow', 'net'"
+        )
+    return data_inner, data_outer, data_outer
 
 
 def update_n_format_chart_title(
@@ -116,6 +132,8 @@ def update_n_format_chart_title(
     time_period: datetime,
     chart_mode: str,
     chart_type: str,
+    operation_mode: str = "flow",
+    category_data=None,
     ci_date=None,
     cf_date=None,
 ) -> str:
@@ -127,34 +145,44 @@ def update_n_format_chart_title(
         chart_mode (str): Can be 'month' or 'period', where period is a custom period selected by the user.
         time_period (datetime.datetime): Used to generate the month interval for the chart
         chart_type (str): Can be "income" or "expense"
+        operation_mode (str): Can be "flow" for flow operations or "net" for net operations
+        category_data (list): Category data to calculate total from (for net mode)
         ci_date (custom initial date - str): initial date to be used for create a custom pie chart.
         cf_date (custom final date - str): final date to be used for create a custom pie chart.
     Returns:
-        data_outer: category data
-        data_inner: subcategory data
+        title (str): Formatted title for the chart
     """
     if chart_mode == "month":
         from_datetime, to_datetime = _get_month_interval(time_period.year, time_period.month)
         selected_period = time_period.strftime(format="%B %Y").capitalize()
-        total = AccountDataAnalyzer.get_user_totals_by_period(
-            user_id=user_id,
-            from_datetime=from_datetime,
-            to_datetime=to_datetime,
-            operation_type=chart_type,
-            currency=currency,
-        )
+        if operation_mode == "flow":
+            total = AccountDataAnalyzer.get_user_totals_by_period(
+                user_id=user_id,
+                from_datetime=from_datetime,
+                to_datetime=to_datetime,
+                operation_type=chart_type,
+                currency=currency,
+            )
+        else:  # net mode
+            # Calculate total from the provided category data
+            total = sum(item["total"] for item in category_data) if category_data else Decimal(0)
     elif chart_mode == "period":
         ci_date, cf_date = time_period.values()
         selected_period = f"Period: {ci_date} -- {cf_date}"
-        total = AccountDataAnalyzer.get_user_totals_by_period(
-            user_id=user_id,
-            from_datetime=ci_date,
-            to_datetime=cf_date,
-            operation_type=chart_type,
-            currency=currency,
-        )
+        if operation_mode == "flow":
+            total = AccountDataAnalyzer.get_user_totals_by_period(
+                user_id=user_id,
+                from_datetime=ci_date,
+                to_datetime=cf_date,
+                operation_type=chart_type,
+                currency=currency,
+            )
+        else:  # net mode
+            # Calculate total from the provided category data
+            total = sum(item["total"] for item in category_data) if category_data else Decimal(0)
     title_type = chart_type.capitalize()
     total_int = f"{total:,.0f}".replace(",", ".")
     total_decimal = f"{total:.2f}".split(".")[1]
-    title = f"<h3><p align='center' style='color:black'><b>{title_type}: ${total_int}<sup>{total_decimal}</sup><br>{selected_period}</b></p>"
+    mode_text = f" ({operation_mode.capitalize()})" if operation_mode == "net" else ""
+    title = f"<h3><p align='center' style='color:black'><b>{title_type}{mode_text}: ${total_int}<sup>{total_decimal}</sup><br>{selected_period}</b></p>"
     return title

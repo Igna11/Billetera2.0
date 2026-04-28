@@ -423,7 +423,7 @@ QPushButton:disabled {
            <item>
             <layout class="QVBoxLayout" name="central_VR_Layout">
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1,1,0,0,0,0,0">
+              <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1,1,0,0,0,0,0,0">
                <item>
                 <spacer name="horizontalSpacer">
                  <property name="orientation">
@@ -481,6 +481,13 @@ QPushButton:disabled {
                 <widget class="QPushButton" name="switch_type_button">
                  <property name="text">
                   <string>Switch</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="toggle_operation_mode_button">
+                 <property name="text">
+                  <string>Flow</string>
                  </property>
                 </widget>
                </item>
