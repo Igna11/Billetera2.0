@@ -78,6 +78,18 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="add_group_button">
+       <property name="font">
+        <font>
+         <pointsize>8</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Add Group</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="save_changes_button">
        <property name="font">
         <font>

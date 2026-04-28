@@ -25,14 +25,18 @@ from PyQt5.QtWidgets import (
     QRadioButton,
     QTextEdit,
     QGridLayout,
+    QDialog,
+    QComboBox,
 )
 from src.models.opmodel import InvalidAccountNameError
 from src.models.opgroupsmodel import OperationGroups
 from src.commands.groupcommands import (
+    CreateOperationGroupCommand,
     DeleteOperationGroupCommand,
     EditOperationGroupCommand,
 )
 from src.queries.opqueries import GetOperationsByGroupQuery
+from src.queries.accqueries import ListAccountsQuery
 
 from billeUI import UISPATH, ICONSPATH, animatedlabel, groupoperationsviewer, currency_format
 
@@ -49,6 +53,7 @@ class GroupDataRow(QWidget):
         self.user_id = user_id
         self.group_id = group.group_id
         self.group_name = group.group_name
+        self.group_currency = group.group_currency or ""
         self.category = group.category or ""
         self.subcategory = group.subcategory or ""
         self.description = group.description or ""
@@ -56,6 +61,7 @@ class GroupDataRow(QWidget):
         # Store original values for comparison
         self.original_values = {
             "group_name": self.group_name,
+            "group_currency": self.group_currency,
             "category": self.category,
             "subcategory": self.subcategory,
             "description": self.description,
@@ -64,7 +70,7 @@ class GroupDataRow(QWidget):
         self.new_values = {}
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_Hover, True)
-        
+
         # Minimal card frame with clean styling
         self.frame = QFrame(self)
         self.frame.setObjectName("GroupRowFrame")
@@ -87,10 +93,10 @@ class GroupDataRow(QWidget):
         title_font = QFont()
         title_font.setPointSize(10)
         title_font.setBold(True)
-        
+
         body_font = QFont()
         body_font.setPointSize(9)
-        
+
         balance_font = QFont()
         balance_font.setPointSize(9)
         balance_font.setBold(True)
@@ -102,14 +108,16 @@ class GroupDataRow(QWidget):
         self.name_line_edit = QLineEdit(self)
         self.name_line_edit.setText(self.group_name)
         self.name_line_edit.setPlaceholderText("Group name")
-        self.name_line_edit.setStyleSheet("""
+        self.name_line_edit.setStyleSheet(
+            """
             QLineEdit {
                 border: 1px solid #ccc;
                 border-radius: 3px;
                 padding: 2px;
                 background: white;
             }
-        """)
+        """
+        )
         self.name_line_edit.hide()
         self.name_line_edit.returnPressed.connect(self.show_qlabel)
         self.name_line_edit.installEventFilter(self)
@@ -121,14 +129,16 @@ class GroupDataRow(QWidget):
         self.category_line_edit = QLineEdit(self)
         self.category_line_edit.setText(self.category)
         self.category_line_edit.setPlaceholderText("Category")
-        self.category_line_edit.setStyleSheet("""
+        self.category_line_edit.setStyleSheet(
+            """
             QLineEdit {
                 border: 1px solid #ccc;
                 border-radius: 3px;
                 padding: 2px;
                 background: white;
             }
-        """)
+        """
+        )
         self.category_line_edit.hide()
         self.category_line_edit.returnPressed.connect(self.show_qlabel)
         self.category_line_edit.installEventFilter(self)
@@ -139,20 +149,24 @@ class GroupDataRow(QWidget):
         self.subcategory_line_edit = QLineEdit(self)
         self.subcategory_line_edit.setText(self.subcategory)
         self.subcategory_line_edit.setPlaceholderText("Subcategory")
-        self.subcategory_line_edit.setStyleSheet("""
+        self.subcategory_line_edit.setStyleSheet(
+            """
             QLineEdit {
                 border: 1px solid #ccc;
                 border-radius: 3px;
                 padding: 2px;
                 background: white;
             }
-        """)
+        """
+        )
         self.subcategory_line_edit.hide()
         self.subcategory_line_edit.returnPressed.connect(self.show_qlabel)
         self.subcategory_line_edit.installEventFilter(self)
 
         description_text = self.description or "No description"
-        self.description_label = QLabel(f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}")
+        self.description_label = QLabel(
+            f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}"
+        )
         self.description_label.setFont(body_font)
         self.description_label.setStyleSheet("color: #888; font-style: italic;")
         self.description_label.hide()  # Hidden by default
@@ -161,14 +175,16 @@ class GroupDataRow(QWidget):
         self.description_line_edit.setText(self.description)
         self.description_line_edit.setPlaceholderText("Description")
         self.description_line_edit.setMaximumHeight(50)
-        self.description_line_edit.setStyleSheet("""
+        self.description_line_edit.setStyleSheet(
+            """
             QTextEdit {
                 border: 1px solid #ccc;
                 border-radius: 3px;
                 padding: 2px;
                 background: white;
             }
-        """)
+        """
+        )
         self.description_line_edit.hide()
         self.description_line_edit.installEventFilter(self)
 
@@ -181,12 +197,19 @@ class GroupDataRow(QWidget):
         self.balance_label.setStyleSheet(f"color: {balance_color};")
         self.balance_label.setAlignment(Qt.AlignCenter)
 
+        # Currency label
+        self.currency_label = QLabel(f"{self.group_currency}")
+        self.currency_label.setFont(body_font)
+        self.currency_label.setStyleSheet("color: #007bff; font-weight: bold;")
+        self.currency_label.setAlignment(Qt.AlignCenter)
+
         # Buttons with minimal styling
         self.edit_btn = QPushButton()
         self.edit_btn.setIcon(QIcon(os.path.join(ICONSPATH, "edit.svg")))
         self.edit_btn.clicked.connect(self.enable_edit_mode)
         self.edit_btn.setToolTip("Edit group")
-        self.edit_btn.setStyleSheet("""
+        self.edit_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: #f0f0f0;
                 border: 1px solid #ccc;
@@ -196,13 +219,15 @@ class GroupDataRow(QWidget):
             QPushButton:hover {
                 background-color: #e0e0e0;
             }
-        """)
+        """
+        )
 
         self.delete_btn = QPushButton()
         self.delete_btn.setIcon(QIcon(os.path.join(ICONSPATH, "delete.svg")))
         self.delete_btn.setToolTip("Delete group")
         self.delete_btn.clicked.connect(self.delete_group)
-        self.delete_btn.setStyleSheet("""
+        self.delete_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: #f0f0f0;
                 border: 1px solid #ccc;
@@ -212,7 +237,8 @@ class GroupDataRow(QWidget):
             QPushButton:hover {
                 background-color: #e0e0e0;
             }
-        """)
+        """
+        )
 
         # self.disable_btn = QPushButton()
         # self.disable_btn.setIcon(QIcon(os.path.join(ICONSPATH, "disable.svg")))
@@ -220,33 +246,36 @@ class GroupDataRow(QWidget):
 
         self.enable_disable_btn = QRadioButton()
         self.enable_disable_btn.setToolTip("Disable group")
-        self.enable_disable_btn.setStyleSheet("""
+        self.enable_disable_btn.setStyleSheet(
+            """
             QRadioButton::indicator {
                 width: 14px;
                 height: 14px;
             }
-        """)
+        """
+        )
 
         # Minimal grid layout for compact arrangement
         grid_layout = QGridLayout()
         grid_layout.setContentsMargins(8, 6, 8, 6)
         grid_layout.setSpacing(6)
-        
+
         # Row 0: Group name (spans all columns)
-        grid_layout.addWidget(self.name_label, 0, 0, 1, 4)
-        grid_layout.addWidget(self.name_line_edit, 0, 0, 1, 4)
-        
-        # Row 1: Category | Subcategory | Balance (3 columns)
+        grid_layout.addWidget(self.name_label, 0, 0, 1, 5)
+        grid_layout.addWidget(self.name_line_edit, 0, 0, 1, 5)
+
+        # Row 1: Category | Subcategory | Balance | Currency (4 columns)
         grid_layout.addWidget(self.category_label, 1, 0)
         grid_layout.addWidget(self.category_line_edit, 1, 0)
         grid_layout.addWidget(self.subcategory_label, 1, 1)
         grid_layout.addWidget(self.subcategory_line_edit, 1, 1)
-        grid_layout.addWidget(self.balance_label, 1, 2, 1, 2)  # Balance spans 2 columns
-        
+        grid_layout.addWidget(self.balance_label, 1, 2)
+        grid_layout.addWidget(self.currency_label, 1, 3)
+
         # Row 2: Description (hidden by default, spans all columns)
-        grid_layout.addWidget(self.description_label, 2, 0, 1, 4)
-        grid_layout.addWidget(self.description_line_edit, 2, 0, 1, 4)
-        
+        grid_layout.addWidget(self.description_label, 2, 0, 1, 5)
+        grid_layout.addWidget(self.description_line_edit, 2, 0, 1, 5)
+
         # Buttons in horizontal layout at the bottom right with extra margins
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
@@ -254,7 +283,7 @@ class GroupDataRow(QWidget):
         btn_layout.addWidget(self.edit_btn)
         btn_layout.addWidget(self.delete_btn)
         btn_layout.setContentsMargins(8, 8, 8, 8)  # Add extra space around buttons
-        
+
         # Main vertical layout
         main_layout = QVBoxLayout(self.frame)
         main_layout.addLayout(grid_layout)
@@ -299,6 +328,7 @@ class GroupDataRow(QWidget):
 
             # Update stored values
             self.group_name = updated_group.group_name
+            self.group_currency = updated_group.group_currency or ""
             self.category = updated_group.category or ""
             self.subcategory = updated_group.subcategory or ""
             self.description = updated_group.description or ""
@@ -306,6 +336,7 @@ class GroupDataRow(QWidget):
             # Update original values to match database
             self.original_values = {
                 "group_name": self.group_name,
+                "group_currency": self.group_currency,
                 "category": self.category,
                 "subcategory": self.subcategory,
                 "description": self.description,
@@ -314,13 +345,17 @@ class GroupDataRow(QWidget):
             # Update labels with minimal styling
             self.name_label.setText(f"{self.group_name}")
             self.name_label.setStyleSheet("color: #333; font-weight: bold;")
+            self.currency_label.setText(f"{self.group_currency}")
+            self.currency_label.setStyleSheet("color: #007bff; font-weight: bold;")
             self.category_label.setText(f"Cat: {self.category or 'N/A'}")
             self.category_label.setStyleSheet("color: #666;")
             self.subcategory_label.setText(f"Sub: {self.subcategory or 'N/A'}")
             self.subcategory_label.setStyleSheet("color: #666;")
 
             description_text = self.description or "No description"
-            self.description_label.setText(f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}")
+            self.description_label.setText(
+                f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}"
+            )
             self.description_label.setToolTip(self.description or "No description")
             self.description_label.setStyleSheet("color: #888; font-style: italic;")
             self.description_label.hide()  # Keep description hidden by default
@@ -392,7 +427,9 @@ class GroupDataRow(QWidget):
         self.subcategory_label.setText(f"Sub: {new_subcategory or 'N/A'}")
 
         description_text = new_description or "No description"
-        self.description_label.setText(f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}")
+        self.description_label.setText(
+            f"Desc: {description_text[:30]}..." if len(description_text) > 30 else f"Desc: {description_text}"
+        )
         self.description_label.setToolTip(new_description or "No description")
 
         # Check if each field changed and apply individual styling
@@ -533,6 +570,178 @@ class GroupDataRow(QWidget):
         super().leaveEvent(event)
 
 
+class CreateGroupDialog(QDialog):
+    """Dialog for creating a new operation group"""
+
+    def __init__(self, user_id: str, parent=None):
+        super().__init__(parent)
+        self.user_id = user_id
+        self.setWindowTitle("Create New Group")
+        self.setModal(True)
+        self.setFixedSize(400, 400)
+
+        # Main layout
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Title
+        title_label = QLabel("Create New Group")
+        title_font = QFont()
+        title_font.setPointSize(12)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #333;")
+        title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title_label)
+
+        # Form layout
+        form_layout = QGridLayout()
+        form_layout.setSpacing(8)
+
+        # Group name (required)
+        name_label = QLabel("Group Name *:")
+        name_label.setStyleSheet("color: #333; font-weight: bold;")
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("Enter group name")
+        form_layout.addWidget(name_label, 0, 0)
+        form_layout.addWidget(self.name_edit, 0, 1)
+
+        # Currency (required)
+        currency_label = QLabel("Currency *:")
+        currency_label.setStyleSheet("color: #333; font-weight: bold;")
+        self.currency_combo = QComboBox()
+        self.currency_combo.setStyleSheet(
+            """
+            QComboBox {
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 2px;
+                background: white;
+            }
+        """
+        )
+        # Get available currencies from accounts
+        currencies = self.get_currency_list()
+        self.currency_combo.addItems(currencies)
+        form_layout.addWidget(currency_label, 1, 0)
+        form_layout.addWidget(self.currency_combo, 1, 1)
+
+        # Category (optional)
+        category_label = QLabel("Category:")
+        category_label.setStyleSheet("color: #666;")
+        self.category_edit = QLineEdit()
+        self.category_edit.setPlaceholderText("Enter category (optional)")
+        form_layout.addWidget(category_label, 2, 0)
+        form_layout.addWidget(self.category_edit, 2, 1)
+
+        # Subcategory (optional)
+        subcategory_label = QLabel("Subcategory:")
+        subcategory_label.setStyleSheet("color: #666;")
+        self.subcategory_edit = QLineEdit()
+        self.subcategory_edit.setPlaceholderText("Enter subcategory (optional)")
+        form_layout.addWidget(subcategory_label, 3, 0)
+        form_layout.addWidget(self.subcategory_edit, 3, 1)
+
+        # Description (optional)
+        description_label = QLabel("Description:")
+        description_label.setStyleSheet("color: #666;")
+        self.description_edit = QTextEdit()
+        self.description_edit.setPlaceholderText("Enter description (optional)")
+        self.description_edit.setMaximumHeight(60)
+        form_layout.addWidget(description_label, 4, 0)
+        form_layout.addWidget(self.description_edit, 4, 1)
+
+        layout.addLayout(form_layout)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        cancel_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 6px 16px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """
+        )
+
+        create_btn = QPushButton("Create")
+        create_btn.clicked.connect(self.create_group)
+        create_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #28a745;
+                color: white;
+                border: 1px solid #218838;
+                border-radius: 3px;
+                padding: 6px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """
+        )
+
+        button_layout.addWidget(cancel_btn)
+        button_layout.addWidget(create_btn)
+        layout.addLayout(button_layout)
+
+    def get_currency_list(self) -> list[str]:
+        """Get list of available currencies from user accounts"""
+        try:
+            acc_list = ListAccountsQuery(user_id=self.user_id).execute()
+            currencies_list = list({account.account_currency for account in acc_list})
+            currencies_list.sort()
+            return currencies_list if currencies_list else ["USD", "EUR", "ARS"]  # Default currencies if no accounts
+        except Exception:
+            return ["USD", "EUR", "ARS"]  # Default currencies
+
+    def create_group(self) -> None:
+        """Create the new group with the entered data"""
+        group_name = self.name_edit.text().strip()
+        currency = self.currency_combo.currentText().strip()
+
+        if not group_name:
+            QMessageBox.warning(self, "Validation Error", "Group name is required!")
+            self.name_edit.setFocus()
+            return
+
+        if not currency:
+            QMessageBox.warning(self, "Validation Error", "Currency is required!")
+            self.currency_combo.setFocus()
+            return
+
+        try:
+            # Create the group using the command
+            command = CreateOperationGroupCommand(
+                user_id=self.user_id,
+                group_name=group_name,
+                group_currency=currency,
+                category=self.category_edit.text().strip() or None,
+                subcategory=self.subcategory_edit.text().strip() or None,
+                description=self.description_edit.toPlainText().strip() or None,
+            )
+            command.execute()
+            animatedlabel.AnimatedLabel("Group created successfully! ✅", message_type="success").display()
+            self.accept()
+        except sqlite3.OperationalError:
+            animatedlabel.AnimatedLabel("Group name already exists!", message_type="error").display()
+        except InvalidAccountNameError:
+            animatedlabel.AnimatedLabel("Invalid group name!", message_type="error").display()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to create group: {str(e)}")
+
+
 class GroupBrowserWidget(QWidget):
     """
     group browser and editor
@@ -555,6 +764,8 @@ class GroupBrowserWidget(QWidget):
 
         self.save_changes_button.setEnabled(False)
         self.save_changes_button.clicked.connect(self.save_group_changes)
+
+        self.add_group_button.clicked.connect(self.show_create_group_dialog)
 
         self.close_button.clicked.connect(self.close_group_widget)
 
@@ -624,6 +835,7 @@ class GroupBrowserWidget(QWidget):
                 animatedlabel.AnimatedLabel("Invalid name!", message_type="error").display()
 
         if changes_saved:
+            self.group_changed.clear()  # Clear the set after successfully saving changes
             self.save_changes_button.setEnabled(False)
             self.groups_updated.emit()  # Notify other components that groups have changed
             # Also notify the main widget to refresh all open windows
@@ -700,6 +912,19 @@ class GroupBrowserWidget(QWidget):
         else:
             self.group_changed.discard(group_id)
         self.save_changes_button.setEnabled(len(self.group_changed) > 0)
+
+    def show_create_group_dialog(self) -> None:
+        """Show the dialog to create a new group"""
+        dialog = CreateGroupDialog(self.user_id, parent=self)
+        if dialog.exec_() == QDialog.Accepted:
+            # Refresh the groups list to show the new group
+            self.group_object = OperationGroups.get_groups_list(user_id=self.widget.user_object.user_id)
+            self.all_groups = list(self.group_object)
+            self.refresh_groups_display()
+            # Notify other components that groups have changed
+            self.groups_updated.emit()
+            if hasattr(self.widget, "refresh_all_groups"):
+                self.widget.refresh_all_groups()
 
     def close_group_widget(self) -> None:
         """Returns to the OperationScreen Menu"""
