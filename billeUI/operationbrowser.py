@@ -15,7 +15,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtWidgets import QMainWindow, QLabel, QStyledItemDelegate, QComboBox, QCompleter
+from PyQt5.QtWidgets import QMainWindow, QLabel, QStyledItemDelegate, QComboBox, QCompleter, QMessageBox
 
 from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
@@ -77,9 +77,12 @@ class PageLink(QLabel):
 class GroupComboBoxDelegate(QStyledItemDelegate):
     """Custom delegate for group column with combo box"""
 
-    def __init__(self, groups_list, parent=None):
+    def __init__(self, groups_list, user_id, accounts_dict, parent=None):
         super().__init__(parent)
         self.groups_list = groups_list  # List of (group_id, group_name) tuples
+        self.user_id = user_id
+        self.accounts_dict = accounts_dict  # Mapping of account_id -> account_currency
+        self.parent_browser = parent  # Reference to parent OperationBrowser for refreshing
 
     def createEditor(self, parent, option, index):
         """Create the combo box editor with search functionality and limit to 10 items"""
@@ -143,6 +146,48 @@ class GroupComboBoxDelegate(QStyledItemDelegate):
                         group_id = gid
                         break
 
+            # If still not found, ask to create a new group
+            if group_id is None and group_name and group_name.strip():
+                # Get account_id from the first column (stored in UserRole + 1)
+                account_id = model.data(index.sibling(index.row(), 0), Qt.UserRole + 1)
+
+                if account_id and account_id in self.accounts_dict:
+                    account_currency = self.accounts_dict[account_id]
+
+                    # Ask user if they want to create the group
+                    reply = QMessageBox.question(
+                        None,
+                        "Create Group",
+                        f"Group '{group_name}' does not exist. Do you want to create it with currency {account_currency}?",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.Yes,
+                    )
+
+                    if reply == QMessageBox.Yes:
+                        # Create the group
+                        new_group = OperationGroups(
+                            user_id=self.user_id,
+                            group_name=group_name,
+                            group_currency=account_currency,
+                            status="open",
+                        )
+                        new_group.create()
+                        group_id = new_group.group_id
+
+                        # Refresh the groups list in the parent browser
+                        if self.parent_browser:
+                            self.parent_browser.refresh_groups_list()
+                    else:
+                        # User cancelled, revert to N/A
+                        model.setData(index, "N/A", Qt.DisplayRole)
+                        model.setData(index, None, Qt.UserRole)
+                        return
+                else:
+                    # No account_id found, revert to N/A
+                    model.setData(index, "N/A", Qt.DisplayRole)
+                    model.setData(index, None, Qt.UserRole)
+                    return
+
             model.setData(index, group_name, Qt.DisplayRole)
             model.setData(index, group_id, Qt.UserRole)  # Store group_id in UserRole
 
@@ -162,6 +207,9 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.acc_list = [f"{acc.account_name} ({acc.account_currency})" for acc in self.accounts_object]
         self.acc_list.extend(["All"])
         self.accounts_comboBox.addItems(self.acc_list)
+
+        # Create accounts dictionary for delegate (account_id -> account_currency)
+        self.accounts_dict = {acc.account_id: acc.account_currency for acc in self.accounts_object}
 
         # Load groups for the combo box delegate
         self.groups_list = []
@@ -203,7 +251,9 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.prev_page_label.clicked.connect(self.prev_page)
 
         # Set up the group column delegate
-        self.group_delegate = GroupComboBoxDelegate(self.groups_list, self)
+        self.group_delegate = GroupComboBoxDelegate(
+            self.groups_list, self.widget.user_object.user_id, self.accounts_dict, self
+        )
 
         # Pupulation of the tables with operations data
         self.set_table_data(self.accounts_comboBox.currentIndex())
