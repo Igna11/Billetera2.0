@@ -37,7 +37,7 @@ from billeUI.accountdetailsdialog import AccountDetailsDialog
 
 class AccountRow(QWidget):
 
-    account_modified = pyqtSignal(str, str, bool)
+    account_modified = pyqtSignal(str, str, str, bool)
 
     def __init__(self, account: Accounts, parent=None):
         super().__init__(parent)
@@ -45,7 +45,9 @@ class AccountRow(QWidget):
         self.account = account
         self.account_id = account.account_id
         self.account_name = account.account_name
+        self.account_tags = account.tags
         self.new_acc_name = ""
+        self.new_acc_tags = ""
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_Hover, True)
         self.frame = QFrame(self)
@@ -76,6 +78,16 @@ class AccountRow(QWidget):
         self.balance_label = QLabel(f"{currency_format(account.account_total)} {account.account_currency}")
         self.balance_label.setFont(font)
 
+        # tags_line
+        tags_text = self.account_tags if self.account_tags else "No tags"
+        self.tags_label = QLabel(f"<i>Tags: {tags_text}</i>")
+        self.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
+        self.tags_line_edit = QLineEdit(self)
+        self.tags_line_edit.setText(self.account_tags if self.account_tags else "")
+        self.tags_line_edit.setPlaceholderText("Enter tags (comma-separated)")
+        self.tags_line_edit.hide()
+        self.tags_line_edit.editingFinished.connect(self.show_qlabel)
+
         # Buttons and Icons
         self.edit_btn = QPushButton()
         self.edit_btn.setIcon(QIcon(os.path.join(ICONSPATH, "edit.svg")))
@@ -101,6 +113,8 @@ class AccountRow(QWidget):
         text_layout = QVBoxLayout()
         text_layout.addWidget(self.name_label)
         text_layout.addWidget(self.name_line_edit)
+        text_layout.addWidget(self.tags_label)
+        text_layout.addWidget(self.tags_line_edit)
         text_layout.addWidget(self.balance_label)
 
         btn_layout = QHBoxLayout()
@@ -122,24 +136,46 @@ class AccountRow(QWidget):
         outer_layout.setContentsMargins(0, 0, 0, 0)
 
     def enable_edit_mode(self) -> None:
-        """Enables the edition of the account name"""
+        """Enables the edition of the account name and tags"""
         self.name_label.hide()
         self.name_line_edit.show()
+        self.tags_label.hide()
+        self.tags_line_edit.show()
         self.name_line_edit.setFocus()
         self.name_line_edit.selectAll()
 
     def show_qlabel(self) -> None:
         """Resets the label with the new values"""
-        self.new_acc_name = self.name_line_edit.text().strip()
+        self.new_acc_name = self.name_line_edit.text().replace(" ","")
+        tags_input = self.tags_line_edit.text().replace(" ","")
+        
+        # Convert empty tags to None to satisfy validation
+        self.new_acc_tags = tags_input if tags_input else None
+        
+        # Update name label
         self.name_label.setText(self.new_acc_name)
-        if self.new_acc_name != self.account_name:
+        
+        # Update tags label
+        tags_display = self.new_acc_tags if self.new_acc_tags else "No tags"
+        self.tags_label.setText(f"<i>Tags: {tags_display}</i>")
+        
+        # Check if anything changed
+        name_changed = self.new_acc_name != self.account_name
+        tags_changed = self.new_acc_tags != self.account_tags
+        
+        if name_changed or tags_changed:
             self.name_label.setStyleSheet("color: orange; font-weight: bold; font-style: italic;")
-            self.account_modified.emit(self.account_id, self.new_acc_name, True)
+            self.tags_label.setStyleSheet("color: orange; font-style: italic; font-size: 9pt;")
+            self.account_modified.emit(self.account_id, self.new_acc_name, self.new_acc_tags, True)
         else:
             self.name_label.setStyleSheet("color: black; font-weight: bold;")
-            self.account_modified.emit(self.account_id, self.account_name, False)
+            self.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
+            self.account_modified.emit(self.account_id, self.account_name, self.account_tags, False)
+        
         self.name_line_edit.hide()
+        self.tags_line_edit.hide()
         self.name_label.show()
+        self.tags_label.show()
 
     def delete_account(self) -> None:
         confirmation_message = """
@@ -177,6 +213,11 @@ class AccountRow(QWidget):
 
     def refresh_account_data(self) -> None:
         self.account = GetAccountByIDQuery(user_id=self.account.user_id, account_id=self.account.account_id).execute()
+        self.account_name = self.account.account_name
+        self.account_tags = self.account.tags
+        self.name_label.setText(f"<b>{self.account_name}</b>")
+        tags_display = self.account_tags if self.account_tags else "No tags"
+        self.tags_label.setText(f"<i>Tags: {tags_display}</i>")
 
     def mouseDoubleClickEvent(self, event) -> None:
         """Open account details dialog on double click."""
@@ -220,9 +261,15 @@ class AccountBrowser(QMainWindow):
         for row in row_to_be_saved:
             try:
                 EditAccountCommand(
-                    user_id=self.user_id, account_id=row.account_id, account_name=row.new_acc_name
+                    user_id=self.user_id, 
+                    account_id=row.account_id, 
+                    account_name=row.new_acc_name,
+                    tags=row.new_acc_tags if row.new_acc_tags else None
                 ).execute()
                 row.name_label.setStyleSheet("color: black; font-weight: bold;")
+                row.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
+                row.account_name = row.new_acc_name
+                row.account_tags = row.new_acc_tags
                 animatedlabel.AnimatedLabel("Changes saved! ✅", message_type="success").display()
                 self.save_changes_button.setEnabled(False)
             except sqlite3.OperationalError:
@@ -236,7 +283,7 @@ class AccountBrowser(QMainWindow):
         self.scroll_layout.addWidget(row)
         return row
 
-    def handle_account_modified(self, account_id: str, new_acc_name: str, is_modified: bool) -> None:
+    def handle_account_modified(self, account_id: str, new_acc_name: str, new_acc_tags: str, is_modified: bool) -> None:
         if is_modified:
             self.account_changed.add(account_id)
         else:

@@ -1,5 +1,5 @@
 """
-Tests for AccountDetailsDialog functionality.
+Tests for AccountDetailsDialog and AccountRow tag editing functionality.
 """
 
 import pytest
@@ -113,5 +113,137 @@ class TestAccountRowDoubleClick:
             # This should not raise an exception
             row.mouseDoubleClickEvent(event)
             mock_dialog.assert_called_once()
+
+        row.close()
+
+
+class TestAccountRowTagEditing:
+    """Test suite for AccountRow tag editing functionality."""
+
+    def test_account_row_has_tags_label(self, qapp, mock_account):
+        """Test that AccountRow displays tags label."""
+        row = AccountRow(mock_account)
+        row.show()
+        assert hasattr(row, "tags_label")
+        assert hasattr(row, "tags_line_edit")
+        row.close()
+
+    def test_account_row_tags_display_with_tags(self, qapp, mock_user):
+        """Test that tags are displayed when account has tags."""
+        test_account = Accounts(
+            user_id=mock_user.user_id,
+            account_name="TestAccount",
+            account_currency="USD",
+            account_total=Decimal("1000.00"),
+            tags="personal,savings",
+        )
+        row = AccountRow(test_account)
+        row.show()
+        assert "personal,savings" in row.tags_label.text()
+        row.close()
+
+    def test_account_row_tags_display_without_tags(self, qapp, mock_account):
+        """Test that 'No tags' is displayed when account has no tags."""
+        row = AccountRow(mock_account)
+        row.show()
+        assert "No tags" in row.tags_label.text()
+        row.close()
+
+    def test_edit_mode_shows_tags_field(self, qapp, mock_account):
+        """Test that edit mode shows the tags edit field."""
+        row = AccountRow(mock_account)
+        row.show()
+        row.enable_edit_mode()
+        # Check that the field is shown (not hidden)
+        assert not row.tags_line_edit.isHidden()
+        assert row.tags_label.isHidden()
+        row.close()
+
+    def test_edit_mode_hides_tags_field_on_save(self, qapp, mock_account):
+        """Test that tags field is hidden when editing is finished."""
+        row = AccountRow(mock_account)
+        row.show()
+        row.enable_edit_mode()
+        row.tags_line_edit.setText("test,new,tags")
+        row.show_qlabel()
+        # Check that the field is hidden
+        assert row.tags_line_edit.isHidden()
+        assert not row.tags_label.isHidden()
+        row.close()
+
+    def test_tag_changes_emit_modified_signal(self, qapp, mock_account):
+        """Test that changing tags emits the modified signal."""
+        row = AccountRow(mock_account)
+        row.show()
+
+        # Track signal emissions
+        signal_emissions = []
+        def slot(acc_id, name, tags, modified):
+            signal_emissions.append((acc_id, name, tags, modified))
+
+        row.account_modified.connect(slot)
+        row.enable_edit_mode()
+        row.tags_line_edit.setText("new,tags")
+        row.show_qlabel()
+
+        # Check that signal was emitted with modified=True
+        assert len(signal_emissions) > 0
+        assert signal_emissions[-1][3] == True  # modified should be True
+        assert signal_emissions[-1][2] == "new,tags"  # tags should be updated
+
+        row.close()
+
+    def test_tag_changes_update_label(self, qapp, mock_account):
+        """Test that tag changes update the display label."""
+        row = AccountRow(mock_account)
+        row.show()
+        row.enable_edit_mode()
+        row.tags_line_edit.setText("personal,business")
+        row.show_qlabel()
+        assert "personal,business" in row.tags_label.text()
+        row.close()
+
+    def test_both_name_and_tags_changes_emit_modified(self, qapp, mock_account):
+        """Test that changing both name and tags emits modified signal."""
+        row = AccountRow(mock_account)
+        row.show()
+
+        # Track signal emissions
+        signal_emissions = []
+        def slot(acc_id, name, tags, modified):
+            signal_emissions.append((acc_id, name, tags, modified))
+
+        row.account_modified.connect(slot)
+        row.enable_edit_mode()
+        row.name_line_edit.setText("NewName")
+        row.tags_line_edit.setText("new,tags")
+        row.show_qlabel()
+
+        # Check that signal was emitted with modified=True
+        assert len(signal_emissions) > 0
+        assert signal_emissions[-1][3] == True  # modified should be True
+        assert signal_emissions[-1][1] == "NewName"
+        assert signal_emissions[-1][2] == "new,tags"
+
+        row.close()
+
+    def test_no_changes_emits_not_modified(self, qapp, mock_account):
+        """Test that no changes emits modified=False signal."""
+        row = AccountRow(mock_account)
+        row.show()
+
+        # Track signal emissions
+        signal_emissions = []
+        def slot(acc_id, name, tags, modified):
+            signal_emissions.append((acc_id, name, tags, modified))
+
+        row.account_modified.connect(slot)
+        row.enable_edit_mode()
+        # Don't change anything
+        row.show_qlabel()
+
+        # Check that signal was emitted with modified=False
+        assert len(signal_emissions) > 0
+        assert signal_emissions[-1][3] == False  # modified should be False
 
         row.close()
