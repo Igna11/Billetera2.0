@@ -32,6 +32,7 @@ from src.commands.acccommands import EditAccountCommand, DeleteAccountCommand
 
 from billeUI import operationscreen, currency_format, animatedlabel
 from billeUI import UISPATH, ICONSPATH
+from billeUI.accountdetailsdialog import AccountDetailsDialog
 
 
 class AccountRow(QWidget):
@@ -176,6 +177,11 @@ class AccountRow(QWidget):
 
     def refresh_account_data(self) -> None:
         self.account = GetAccountByIDQuery(user_id=self.account.user_id, account_id=self.account.account_id).execute()
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        """Open account details dialog on double click."""
+        dialog = AccountDetailsDialog(self.account, self)
+        dialog.exec()
 
 
 class AccountBrowser(QMainWindow):
