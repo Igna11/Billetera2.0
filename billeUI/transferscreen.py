@@ -18,7 +18,6 @@ from src.queries.accqueries import ListAccountsQuery
 from src.ophandlers.operationhandler import NegativeAccountTotalError
 from src.ophandlers.transferhandler import (
     TransferHandler,
-    EmptyAccountError,
     DifferentCurrencyTransferError,
     SameAccountError,
 )
@@ -192,9 +191,6 @@ class TransferScreen(QMainWindow):
             self.status_label.setText(
                 "<font color='red'>Can not transfer between accounts with different currencies.</font>"
             )
-        except EmptyAccountError:
-            animatedlabel.AnimatedLabel("Empty account!", message_type="error").display()
-            self.status_label.setText("<font color='red'>Origin account is empty.")
         except NegativeAccountTotalError:
             animatedlabel.AnimatedLabel("Invalid amount!", message_type="error").display()
             self.status_label.setText(

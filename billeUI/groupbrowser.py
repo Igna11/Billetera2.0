@@ -28,14 +28,15 @@ from PyQt5.QtWidgets import (
     QDialog,
     QComboBox,
 )
-from src.models.opmodel import InvalidAccountNameError
+from src.errorhandler.accountserrors import InvalidAccountNameError
 from src.models.opgroupsmodel import OperationGroups
+from src.queries.groupqueries import ListGroupsQuery, GetGroupByIDQuery
 from src.commands.groupcommands import (
     CreateOperationGroupCommand,
     DeleteOperationGroupCommand,
     EditOperationGroupCommand,
 )
-from src.queries.opqueries import GetOperationsByGroupQuery
+from src.queries.opqueries import ListOperationsQuery
 from src.queries.accqueries import ListAccountsQuery
 
 from billeUI import UISPATH, ICONSPATH, animatedlabel, groupoperationsviewer, currency_format
@@ -298,12 +299,10 @@ class GroupDataRow(QWidget):
     def calculate_group_balance(self) -> Decimal:
         """Calculate the balance for the group (income - expense)"""
         try:
-            operations = GetOperationsByGroupQuery(
-                user_id=self.user_id, group_id=self.group_id, order_by_datetime="DESC"
-            ).execute()
+            group_operations = ListOperationsQuery(user_id=self.user_id).execute(group_id=self.group_id)
 
             balance = Decimal("0")
-            for operation in operations:
+            for operation in group_operations:
                 if operation.operation_type == "income":
                     balance += operation.amount
                 elif operation.operation_type == "expense":
@@ -513,7 +512,7 @@ class GroupDataRow(QWidget):
         pass
 
     def refresh_account_data(self) -> None:
-        self.group = OperationGroups.get_groups_list(user_id=self.group.user_id).execute()
+        self.group = GetGroupByIDQuery(user_id=self.group.user_id, group_id=self.group.group_id).execute()
 
     def mouseDoubleClickEvent(self, event):
         """Handle double-click event to show group operations"""
@@ -773,8 +772,12 @@ class GroupBrowserWidget(QWidget):
         self.search_line_edit = self.findChild(QLineEdit, "search_line_edit")
         self.search_line_edit.textChanged.connect(self.filter_groups)
 
-        self.group_object = OperationGroups.get_groups_list(user_id=self.widget.user_object.user_id)
-        self.all_groups = list(self.group_object)  # Store all groups
+        try:
+            self.group_object = ListGroupsQuery(user_id=self.widget.user_object.user_id).execute()
+            self.all_groups = self.group_object  # Store all groups
+        except Exception:
+            self.group_object = []
+            self.all_groups = []
 
         self.scroll_content = self.findChild(QWidget, "scrollAreaWidgetContents")
         self.scroll_layout = self.scroll_content.layout()
@@ -894,7 +897,11 @@ class GroupBrowserWidget(QWidget):
         """Handle double-click on a group to show its operations"""
         try:
             operations_viewer = groupoperationsviewer.GroupOperationsViewer(
-                group_id=group_id, group_name=group_name, user_id=self.user_id, parent=self, widget=self.widget
+                group_id=group_id,
+                group_name=group_name,
+                user_id=self.user_id,
+                parent=self,
+                widget=self.widget,
             )
             # Store reference to the viewer so we can update it when group name changes
             if not hasattr(self, "open_viewers"):
@@ -918,8 +925,12 @@ class GroupBrowserWidget(QWidget):
         dialog = CreateGroupDialog(self.user_id, parent=self)
         if dialog.exec_() == QDialog.Accepted:
             # Refresh the groups list to show the new group
-            self.group_object = OperationGroups.get_groups_list(user_id=self.widget.user_object.user_id)
-            self.all_groups = list(self.group_object)
+            try:
+                self.group_object = ListGroupsQuery(user_id=self.widget.user_object.user_id).execute()
+                self.all_groups = self.group_object
+            except Exception:
+                self.group_object = []
+                self.all_groups = []
             self.refresh_groups_display()
             # Notify other components that groups have changed
             self.groups_updated.emit()

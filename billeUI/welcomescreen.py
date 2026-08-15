@@ -9,7 +9,7 @@ from PyQt5 import QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import QMainWindow
 
-from src.models.usrmodel import User
+from src.dbhandlers.usersdb import UsersDB
 from billeUI import UISPATH
 from billeUI import loginscreen
 from billeUI import createuserscreen
@@ -26,7 +26,9 @@ class WelcomeScreen(QMainWindow):
         super(WelcomeScreen, self).__init__(parent)
         welcome_screen = os.path.join(UISPATH, "bille_screen.ui")
         loadUi(welcome_screen, self)
-        User.create_table()
+        # Initialize database if needed
+        user_db = UsersDB()
+        # The database tables are created automatically by DatabaseConnection
         self.widget = widget
         self.login_button.clicked.connect(self.login_window)
         self.create_account_button.clicked.connect(self.create_user_window)

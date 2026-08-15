@@ -1,31 +1,48 @@
 """
 billeterapp 2.0 - Agosto 2024
+Updated - Mayo 2026
 
 Higher order module for creation of databases, users and accounts.
 It uses the models.py module.
 """
 
-from src.models.opdetmodel import OperationsDetails
+from datetime import datetime, UTC
+
+from src.models.opdetmodel import OperationDetails
+from src.dbhandlers.opdetailsdb import OperationDetailsDB
+from src.errorhandler.opdetailserrors import OperationDetailsNotFoundError
 
 
-class CreateOperationDetailCommand(OperationsDetails):
+class CreateOperationDetailCommand(OperationDetails):
 
-    def execute(self):
-        oper_details = OperationsDetails(**self.model_dump())
-        det = oper_details.create()
-        return det
-
-
-class EditOperationDetailsCommand(OperationsDetails):
-
-    def execute(self):
-        oper_details = OperationsDetails(**self.model_dump())
-        det = oper_details.save()
-        return det
+    def execute(self) -> OperationDetails:
+        self.created_at = self.updated_at = datetime.now(UTC)
+        det_db = OperationDetailsDB(user_id=self.user_id)  # type: ignore[arg-type]
+        det_db.create_detail(self)
+        return self
 
 
-class DeleteOperationDetailsCommand(OperationsDetails):
+class EditOperationDetailsCommand(OperationDetails):
 
-    def execute(self):
-        det = OperationsDetails.get_details_by_operation_id(self.user_id, self.operation_id)
-        det.delete()
+    def execute(self) -> OperationDetails:
+        self.updated_at = datetime.now(UTC)
+        det_db = OperationDetailsDB(user_id=self.user_id)  # type: ignore[arg-type]
+        det_db_data = det_db.get_detail_by_id(self.detail_id)
+
+        if not det_db_data:
+            raise OperationDetailsNotFoundError
+
+        det_db.update_detail(self)
+        return self
+
+
+class DeleteOperationDetailsCommand(OperationDetails):
+
+    def execute(self) -> None:
+        det_db = OperationDetailsDB(user_id=self.user_id)  # type: ignore[arg-type]
+        det_db_data = det_db.get_detail_by_id(self.detail_id)
+
+        if not det_db_data:
+            raise OperationDetailsNotFoundError
+
+        det_db.delete_detail(detail_id=self.detail_id)

@@ -4,12 +4,66 @@ Expense tracker project made entirely with python. Designed to be robust but eas
 
 This app was created with the idea of tracking the expenses in the most similar way that they occur in real life. Any income/expense can be added with their specific date and time, no matter when it is being tracked. The only detail to bare in mind is that no negative values are allowed for totals.
 
-As of today, there are some trivial features that are not implemented yet, like: deletion of operations, deletion of accounts, among others. But they will be implemented soon.
+## Current Features
+- Multi-user support with individual databases
+- Multi-account support per user  
+- Multi-currency support (ISO4217)
+- Transaction types: income, expense, transfer_in, transfer_out
+- Category/subcategory organization
+- Operation grouping for complex transactions
+- Time-based transaction tracking with datetime fields
+- Pie chart visualization for spending analysis by category
+- Monthly balance bar charts with daily income/expense/balance tracking
+- Cumulative balance trend line with hover tooltips
+- Context menu for switching between pie and bar charts
+- Custom date range support for visualizations
+- Currency-specific analysis
 
-There are other features that would be awsome to implement, like:
-- Deferred expenses, like the ones with credit cards - so the user can have a detail of the amount of money is going to have to pay in the future, for example
-- Flow of money vs real incomes and real expenses: it is not the same to pay the check of a restaurant for you and 3 friends, if they are going to pay you their part, than only paying for you. The first case was money that flown out from you and the second case is a real expense. 
-- Insightfull graphs and dashboards for understanding the way money is being spent.
+## Usage
+- **Chart Switching**: Right-click on any chart to switch between pie chart and bar chart
+- **Monthly Balance**: Use the bar chart to see daily income, expenses, and cumulative balance evolution
+- **Custom Ranges**: Use the "Custom" button to select custom date ranges for analysis
+- **Hover Tooltips**: For custom date ranges, hover over the chart to see date and balance information
+- **Currency Filtering**: Change currency dropdown to filter analysis by currency
 
-etc.
+## Testing
+The project includes a comprehensive UI testing framework using pytest-qt for PyQt5 components.
+
+### Setup
+Install testing dependencies:
+```bash
+pip install -r requirements-ui-testing.txt
+```
+
+### Running Tests
+Run all UI tests:
+```bash
+pytest tests/ui/
+```
+
+Or use the convenience script:
+```bash
+./run_ui_tests.sh
+```
+
+Run specific test files:
+```bash
+pytest tests/ui/test_welcomescreen.py
+pytest tests/ui/test_loginscreen.py
+pytest tests/ui/test_operationscreen.py
+```
+
+### Test Features
+- **Headless Mode**: Tests run without displaying windows (suitable for CI/CD)
+- **Data Isolation**: Uses temporary databases to avoid affecting real user data
+- **Interactive Testing**: Simulates real user interactions (clicks, keyboard input)
+- **Coverage**: Tests for WelcomeScreen, LoginScreen, and OperationScreen
+
+For detailed testing documentation, see `tests/README.md`.
+
+## Planned Features
+- Deferred expenses (credit cards) - track future payment obligations
+- Flow vs. real money analysis - distinguish between money flow and actual expenses
+- Operation deletion
+- Account deletion
 

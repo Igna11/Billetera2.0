@@ -17,8 +17,8 @@ class BilleterApp(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(os.path.join(ICONSPATH, "wallet2.png")))
-    app.setApplicationName("BilleterApp")
-    app.setApplicationDisplayName("BilleterApp")
+    app.setApplicationName("BilleterApp V2")
+    app.setApplicationDisplayName("BilleterApp V2")
     widget = QStackedWidget()
     main_window = welcomescreen.WelcomeScreen(widget=widget)
     widget.addWidget(main_window)

@@ -4,394 +4,305 @@ billeterapp 2.0 - Junio 2025                                                    
 This module handles the data stored in the operation tables.
 """
 
-import os
-import sqlite3
-from typing import List, Dict
-from string import Template
+from typing import List, Dict, Literal, ClassVar, Optional
 from decimal import Decimal
 from datetime import datetime
 from collections import defaultdict
 
-from src.models.accmodel import UserAccounts
-from src.models.opmodel import UserOperations
+from src.models.opmodel import Operations
+
+from src.queries.accqueries import ListAccountsQuery
+from src.queries.opqueries import ListOperationsQuery, GetOperationsForNetAnalysisQuery
+
+from pydantic import BaseModel
 
 
-SELECT_QUERY = Template(
-    """
-    SELECT  
-      operation_id,
-      operation_datetime,
-      amount,
-      operation_type,
-      category,
-      subcategory,
-      description,
-      tags
-    FROM
-      $table_name
-    WHERE 
-      operation_datetime >= ?
-    AND
-      operation_datetime <= ?
-    AND
-      operation_type = ?
-    """
-)
+class AccountDataAnalyzer(BaseModel):
 
-TOTAL_QUERY = Template(
-    """
-    SELECT
-      SUM(amount)
-    FROM
-      $table_name
-    WHERE
-      operation_datetime >= ?
-    AND
-      operation_datetime <= ?
-    AND
-      operation_type = ?
-    """
-)
+    user_id: str
+    coeff: ClassVar[dict] = {"income": 1, "expense": -1, "transfer_in": 0, "transfer_out": 0}
 
-
-class AccountDataAnalyzer(UserAccounts):
-
-    def get_all_operations(self, **kwargs) -> List:
-        """Returns an ordered by timestamp list of all existing operations of all accounts of the same currency"""
-        accounts_list = UserAccounts.get_all_accounts(user_id=self.user_id, **kwargs)
-        select_template = Template(
-            "SELECT *, ? AS 'user_id', $account_id AS 'account_id', '$account_name' AS account_name FROM $table_name"
-        )
-
-        operations_selects_list = []
-        for account in accounts_list:
-            table_name = f"{account.account_name}_{account.account_currency}"
-            acc_name = account.account_name
-            operations_selects_list.append(
-                select_template.substitute(
-                    account_id="'" + account.account_id + "'",
-                    table_name=table_name,
-                    account_name=acc_name,
-                )
-            )
-
-        # join all queries for every table with a UNION ALL
-        operation_select_union = " UNION ALL ".join(operations_selects_list)
-
-        final_query = operation_select_union + " ORDER BY operation_datetime DESC;"
-
-        db_path = os.path.join("data", self.user_id, "accounts_database.db")
-
-        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", db_path))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        try:
-            cur.execute(final_query, (self.user_id,) * len(accounts_list))
-            all_operations = cur.fetchall()
-            conn.close()
-        except sqlite3.OperationalError as e:
-            print(e)  # debugging and develop purposes
-
-        operation_objects = [UserOperations(**operation) for operation in all_operations]
-
-        return operation_objects
+    def get_all_operations(self, **kwargs) -> List[Operations]:
+        return ListOperationsQuery(user_id=self.user_id).execute(order="ASC", **kwargs)
 
     @classmethod
-    def get_user_totals(cls, user_id: str, **kwargs: int | str) -> Decimal:
-        """Calculates the User total of all accounts for every currency if specify in kwargs."""
-        accounts_list = UserAccounts.get_all_accounts(user_id=user_id, **kwargs)
-        total = Decimal(0)
+    def get_user_totals(cls, user_id: str, **kwargs) -> Dict[str, Decimal]:
+        """Calculates the total balance across all accounts for each currency"""
+        accounts_list = ListAccountsQuery(user_id=user_id).execute(**kwargs)
+        if not accounts_list:
+            return {"_": Decimal("0")}
+        totals: Dict[str, Decimal] = {}
         for account in accounts_list:
-            try:
-                total += account.account_total
-            except TypeError as e:
-                print(f"Error captured during execution: {e}")  # debugging and developing purposes
-                total += 0
-        return total
+            currency = account.account_currency if account.account_currency else "_"
+            total = account.account_total if account.account_total is not None else Decimal("0")
+
+            if currency not in totals:
+                totals[currency] = Decimal("0")
+
+            totals[currency] += total
+
+        return totals
 
     @classmethod
     def get_user_totals_by_period(
-        cls, user_id: str, from_datetime: datetime, to_datetime: datetime, operation_type: str, **kwargs: int | str
-    ) -> Decimal:
-        """
-        Calculates the User income/expense total of all accounts for a given period of time for a given currency
-        Args:
-            user_id (str): The unique identifier for the user
-            from_datetime (datetime): initial datetime
-            to_datetime (datetime): final datetime
-            operation_type (str): 'income'/'expense'
-            **kwargs (int | str): 'is_active', 'currency'
-        Returns:
-            total (Decimal): The total value
-        """
-        accounts_list = UserAccounts.get_all_accounts(user_id=user_id, **kwargs)
-
-        db_path = os.path.join("data", user_id, "accounts_database.db")
-
-        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", db_path))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-
-        total = Decimal(0)
-
-        for account in accounts_list:
-            try:
-                table_name = f"{account.account_name}_{account.account_currency}"
-                cur.execute(
-                    TOTAL_QUERY.substitute(table_name=table_name),
-                    (
-                        from_datetime,
-                        to_datetime,
-                        operation_type,
-                    ),
-                )
-                parcial = cur.fetchone()["SUM(amount)"]
-                if parcial:
-                    total += Decimal(parcial)
-
-            except sqlite3.OperationalError as e:
-                print(e)  # debugging and develop purposes
-
-        return total
-
-    @classmethod
-    def categorize_flow_operations(
         cls,
         user_id: str,
-        from_datetime: datetime,
-        to_datetime: datetime,
+        from_dt: datetime,
+        to_dt: datetime,
         operation_type: str,
+        currency: str,
+        is_active: bool = True,
+    ) -> Decimal:
+        filtered_operations = ListOperationsQuery(user_id=user_id).execute(
+            from_dt=from_dt,
+            to_dt=to_dt,
+            operation_type=operation_type,
+            currency=currency,
+            is_active=is_active,
+        )
+        return Decimal(sum([oper.amount for oper in filtered_operations]))
+
+    @classmethod
+    def get_user_flow_totals_by_category(
+        cls,
+        user_id: str,
+        from_dt: datetime,
+        to_dt: datetime,
         data_type: str,
-        **kwargs: int | str,
+        currency: str,
+        operation_type: Optional[Literal["income", "expense"]],
+        is_active: bool,
     ) -> List[Dict]:
         """
-        Gathers all operations for all active accounts with the same currency in a given period of time
+        Gathers all operations for accounts with the same currency in a given period of time
         and groups them by category or by category and subcategory adding their amounts.
         This method does not discriminate for group of operations.
         Args:
             user_id (str): The unique identifier for the user
-            from_datetime (datetime): initial datetime
-            to_datetime (datetime): final datetime
-            operation_type (str): 'income'/'expense'
+            from_dt (datetime): initial datetime
+            to_dt (datetime): final datetime
             data_type (str): 'category'/'subcategory'
-            **kwargs (int | str): 'is_active', 'currency'
+            currency (str): currency filter to avoid mixing currencies
+            operation_type (Optional[Literal["income", "expense"]]): 'income'/'expense' or None for both
+            is_active (bool): filter for active accounts
         Returns:
              category_data (List[Dict]): e.g.: [{'category': <category_name>, 'total': total}, ...]
              subcategory_data (List[Dict]):
                 e.g.: [{'category': <category_name>, 'subcategory': <subcat_name>, 'total': total}, ...]
         """
-        accounts_list = UserAccounts.get_all_accounts(user_id=user_id, **kwargs)
-        all_operations = []
-
-        db_path = os.path.join("data", user_id, "accounts_database.db")
-
-        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", db_path))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-
-        for account in accounts_list:
-            try:
-                table_name = f"{account.account_name}_{account.account_currency}"
-                cur.execute(
-                    SELECT_QUERY.substitute(table_name=table_name),
-                    (
-                        from_datetime,
-                        to_datetime,
-                        operation_type,
-                    ),
-                )
-                operations = cur.fetchall()
-                all_operations.extend(operations)
-            except sqlite3.OperationalError as e:
-                print(e)  # debugging and develop purposes
-
-        operation_objects = []
-        for operation in all_operations:
-            operation_objects.append(UserOperations(**operation))
-
-        # operation_objects.sort(key=lambda operation_objects: operation_objects.operation_datetime)
+        operations = ListOperationsQuery(user_id=user_id).execute(
+            from_dt=from_dt,
+            to_dt=to_dt,
+            currency=currency,
+            operation_type=operation_type,
+            is_active=is_active,
+        )
         # Grouping
         if data_type == "category":
-            category_group = defaultdict(Decimal)
-            for operation in operation_objects:
-                if operation.amount is None:
-                    raise ValueError
-                # category = operation.category if operation.category is not None else "-"
-                # category_group[category] += operation.amount
-                category_group[operation.category] += operation.amount
-            category_data = [
-                {"category": cat, "total": Decimal(total)} for cat, total in sorted(category_group.items())
-            ]
-            return category_data
-
+            return AccountDataAnalyzer._group_categories(operations, operation_type)
         elif data_type == "subcategory":
-            subcategory_group = defaultdict(Decimal)
-            for operation in operation_objects:
-                if operation.amount is None:
-                    raise ValueError
-                key = (operation.category, operation.subcategory)
-                subcategory_group[key] += operation.amount
-            subcategory_data = [
-                {"category": category, "subcategory": subcategory, "total": Decimal(total)}
-                for (category, subcategory), total in sorted(subcategory_group.items())
-            ]
-            return subcategory_data
+            return AccountDataAnalyzer._group_subcategories(operations, operation_type)
+        return []
 
     @classmethod
-    def categorize_net_operations(
+    def get_user_net_totals_by_category(
         cls,
         user_id: str,
-        from_datetime: datetime,
-        to_datetime: datetime,
-        operation_type: str,
+        from_dt: datetime,
+        to_dt: datetime,
+        currency: str,
         data_type: str,
-        **kwargs: int | str,
+        operation_type: Optional[str] = None,
+        is_active: Optional[bool] = True,
     ) -> List[Dict]:
         """
-        Gathers all operations for all active accounts with the same currency in a given period of time
+        Gathers all operations for accounts with the same currency in a given period of time
         and groups them by category or by category and subcategory adding their amounts.
         This method does discriminate for group of operations: operations belonging to any group will be grouped and
-        all their values will be summed in order to determine if its total is an net income or a net expense.
+        all their values will be summed in order to determine if its total is a net income or a net expense.
         Args:
             user_id (str): The unique identifier for the user
-            from_datetime (datetime): initial datetime
-            to_datetime (datetime): final datetime
-            operation_type (str): 'income'/'expense'
+            from_dt (datetime): initial datetime
+            to_dt (datetime): final datetime
+            currency (str): currency filter to avoid mixing currencies
             data_type (str): 'category'/'subcategory'
-            **kwargs (int | str): 'is_active', 'currency'
+            operation_type (str): 'income'/'expense' or None for both
         Returns:
              category_data (List[Dict]): e.g.: [{'category': <category_name>, 'total': total}, ...]
              subcategory_data (List[Dict]):
                 e.g.: [{'category': <category_name>, 'subcategory': <subcat_name>, 'total': total}, ...]
         """
-
-        accounts_list = UserAccounts.get_all_accounts(user_id=user_id, **kwargs)
-
-        db_path = os.path.join("data", user_id, "accounts_database.db")
-
-        conn = sqlite3.connect(os.getenv("ACC_DATABASE_NAME", db_path))
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-
-        # A query for listing all existing groups created inside the time window
-        cur.execute("SELECT * FROM operation_groups WHERE created_at BETWEEN ? AND ?", (from_datetime, to_datetime))
-        groups_list = [dict(group)["group_id"] for group in cur.fetchall()]
-
-        # Generate a query for every account table in the time window
-        operation_select_for_all_accounts = Template(
-            "SELECT * FROM $acc_table WHERE operation_datetime BETWEEN '$from_dttime' AND '$to_dttime'"
+        operations = GetOperationsForNetAnalysisQuery(user_id=user_id).execute(
+            from_dt=from_dt,
+            to_dt=to_dt,
+            currency=currency,
+            is_active=is_active,
         )
-
-        operations_selects_list = []
-        for account in accounts_list:
-            table_name = f"{account.account_name}_{account.account_currency}"
-            operations_selects_list.append(
-                operation_select_for_all_accounts.substitute(
-                    acc_table=table_name, from_dttime=from_datetime, to_dttime=to_datetime
-                )
-            )
-
-        # join all queries for every table with a UNION ALL
-        operation_select_union = " UNION ALL ".join(operations_selects_list)
-
-        # Generate the part of the query that takes care of filtering by group id
-        group_ids = ", ".join([f"'{gid}'" for gid in groups_list])
-
-        grouped_operations_query = (
-            f"SELECT * FROM ({operation_select_union}) AS all_operations WHERE group_id IN ({group_ids})"
-        )
-        # Another part of the query that takes care of fetching all operations that don't have groups
-        ungrouped_operations_query = f"""
-            SELECT
-              amount,
-              operation_type,
-              category,
-              subcategory,
-              description,
-              group_id
-            FROM 
-              ({operation_select_union})
-            WHERE 
-              group_id IS NULL"""
-
-        # For the query of grouped operations, their amounts are added
-        sum_query = f"""
-            SELECT
-            ABS(
-              SUM(
-              CASE
-                  WHEN operation_type = 'income' THEN amount
-                  WHEN operation_type = 'expense' THEN - amount
-                  ELSE 0
-              END
-              )
-            ) AS amount,
-            CASE
-              WHEN SUM(
-              CASE
-                  WHEN operation_type = 'income' THEN amount
-                  WHEN operation_type = 'expense' THEN - amount
-                  ELSE 0
-              END
-              ) >= 0 THEN 'income'
-              ELSE 'expense'
-            END AS operation_type,
-            category,
-            subcategory,
-            group_id
-            FROM
-            ({grouped_operations_query})
-            GROUP BY group_id
-        """
-        join_query = f"""
-            SELECT 
-              sum_table.amount,
-              sum_table.operation_type,
-              op_gp.category,
-              op_gp.subcategory,
-              op_gp.description,
-              op_gp.group_id
-            FROM
-              operation_groups as op_gp
-            LEFT JOIN
-              ({sum_query}) as sum_table
-            ON op_gp.group_id = sum_table.group_id
-            """
-
-        category_query = f"""
-            SELECT 
-              category,
-              SUM(amount) AS total
-            FROM 
-              ({join_query}
-            UNION ALL 
-              {ungrouped_operations_query})
-            WHERE 
-              operation_type = '{operation_type}'
-            GROUP BY category;"""
-
-        subcategory_query = f"""
-            SELECT
-              category,
-              subcategory,
-              SUM(amount) AS total
-            FROM 
-              ({join_query}
-            UNION ALL
-              {ungrouped_operations_query})
-            WHERE
-              operation_type = '{operation_type}'
-            GROUP BY category, subcategory;"""
-
+        # Grouping
         if data_type == "category":
-            cur.execute(category_query)
-            data = cur.fetchall()
-            return list(map(dict, data))
+            return AccountDataAnalyzer._group_categories(operations, operation_type)
         elif data_type == "subcategory":
-            cur.execute(subcategory_query)
-            data = cur.fetchall()
-            return list(map(dict, data))
+            return AccountDataAnalyzer._group_subcategories(operations, operation_type)
+        return []
 
+    @staticmethod
+    def _sanitize_negative_values(results: List[Dict]) -> List[Dict]:
+        """
+        Sanitizes the results by:
+        1. Setting operation_type based on total sign (positive=income, negative=expense)
+        2. Converting total to absolute value
+        3. Removing entries with total of 0
 
-class OperationDataAnalizer(UserOperations):
-    pass
+        Args:
+            results: List of dictionaries with 'total' key
+
+        Returns:
+            Sanitized list of dictionaries
+        """
+        sanitized = []
+        for item in results:
+            total = item["total"]
+            if total == 0:
+                continue  # Skip items with total of 0
+
+            # Determine operation_type based on sign
+            operation_type = "income" if total > 0 else "expense"
+
+            # Create new item with sanitized values
+            sanitized_item = item.copy()
+            sanitized_item["operation_type"] = operation_type
+            sanitized_item["total"] = abs(total)
+            sanitized.append(sanitized_item)
+
+        return sanitized
+
+    @staticmethod
+    def _group_categories(operations: list[Operations], operation_type: Optional[str]) -> List[Dict]:
+        coeff = {"income": 1, "expense": -1, "transfer_in": 0, "transfer_out": 0}
+        totals_by_category: defaultdict[str, Decimal] = defaultdict(Decimal)
+        for oper in operations:
+            category = oper.category or ""
+            if not operation_type:  # incomes and expenses
+                totals_by_category[category] += oper.amount * coeff[oper.operation_type]
+            elif oper.operation_type == operation_type == "income":
+                totals_by_category[category] += oper.amount
+            elif oper.operation_type == operation_type == "expense":
+                totals_by_category[category] += oper.amount
+
+        result = [
+            {
+                "category": cat,
+                "total": Decimal(total),
+            }
+            for cat, total in sorted(totals_by_category.items())
+        ]
+
+        return result
+
+    @staticmethod
+    def _group_subcategories(operations: list[Operations], operation_type: Optional[str]) -> List[Dict]:
+        coeff = {"income": 1, "expense": -1, "transfer_in": 0, "transfer_out": 0}
+        totals_by_subcategory: defaultdict[tuple[str, str], Decimal] = defaultdict(Decimal)
+        for oper in operations:
+            category = oper.category or ""
+            subcategory = oper.subcategory or ""
+            key = (category, subcategory)
+            if not operation_type:  # incomes and expenses
+                totals_by_subcategory[key] += oper.amount * coeff[oper.operation_type]
+            elif oper.operation_type == operation_type == "income":
+                totals_by_subcategory[key] += oper.amount
+            elif oper.operation_type == operation_type == "expense":
+                totals_by_subcategory[key] += oper.amount
+
+        result = [
+            {
+                "category": category,
+                "subcategory": subcategory,
+                "total": Decimal(total),
+            }
+            for (category, subcategory), total in sorted(
+                totals_by_subcategory.items(),
+            )
+        ]
+        return result
+
+    @classmethod
+    def get_daily_totals(
+        cls,
+        user_id: str,
+        from_dt: datetime,
+        to_dt: datetime,
+        currency: str,
+        is_active: bool = True,
+    ) -> List[Dict]:
+        """
+        Gets daily income and expense totals for a specific time period.
+
+        This method handles both:
+        - Monthly periods (day numbers 1-31)
+        - Custom time ranges spanning multiple months (using date strings for day labels)
+
+        Args:
+            user_id: User identifier
+            from_dt: Start datetime for the period
+            to_dt: End datetime for the period
+            currency: Currency filter to avoid mixing currencies
+            is_active: Filter for active accounts
+
+        Returns:
+            List of dictionaries with keys 'day', 'income', 'expense'
+            For monthly periods: day is an integer (1-31)
+            For custom ranges: day is a date string (YYYY-MM-DD)
+            e.g., [{'day': 1, 'income': 100.0, 'expense': 50.0}, ...]
+                 or [{'day': '2026-08-01', 'income': 100.0, 'expense': 50.0}, ...]
+        """
+        from calendar import monthrange
+
+        # Get all operations for the time period
+        operations = ListOperationsQuery(user_id=user_id).execute(
+            from_dt=from_dt, to_dt=to_dt, currency=currency, is_active=is_active, order="ASC"
+        )
+
+        # Check if this is a single month period
+        is_single_month = (
+            from_dt.year == to_dt.year
+            and from_dt.month == to_dt.month
+            and from_dt.day == 1
+            and to_dt.day == monthrange(to_dt.year, to_dt.month)[1]
+        )
+
+        # Group by day and sum income/expenses
+        if is_single_month:
+            # Use integer day numbers for single month
+            daily_totals = defaultdict(lambda: {"income": Decimal("0"), "expense": Decimal("0")})
+
+            for oper in operations:
+                day = oper.operation_datetime.day
+                if oper.operation_type == "income":
+                    daily_totals[day]["income"] += oper.amount
+                elif oper.operation_type == "expense":
+                    daily_totals[day]["expense"] += oper.amount
+
+            # Convert to list of dictionaries sorted by day
+            result = [
+                {"day": day, "income": float(totals["income"]), "expense": float(totals["expense"])}
+                for day, totals in sorted(daily_totals.items())
+            ]
+        else:
+            # Use date strings for custom ranges spanning multiple months
+            daily_totals = defaultdict(lambda: {"income": Decimal("0"), "expense": Decimal("0")})
+
+            for oper in operations:
+                date_str = oper.operation_datetime.strftime("%Y-%m-%d")
+                if oper.operation_type == "income":
+                    daily_totals[date_str]["income"] += oper.amount
+                elif oper.operation_type == "expense":
+                    daily_totals[date_str]["expense"] += oper.amount
+
+            # Convert to list of dictionaries sorted by date
+            result = [
+                {"day": date_str, "income": float(totals["income"]), "expense": float(totals["expense"])}
+                for date_str, totals in sorted(daily_totals.items())
+            ]
+
+        return result

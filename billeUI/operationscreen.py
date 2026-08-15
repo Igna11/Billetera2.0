@@ -9,7 +9,8 @@ from typing import List
 from decimal import Decimal
 from datetime import datetime
 
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QPainter
 from PyQt5.QtChart import QChartView
@@ -28,7 +29,9 @@ from billeUI import (
     operationbrowser,
     accountbrowser,
     piechartfunctions,
+    monthlybalancechart,
 )
+from billeUI.monthlybalancechart import BalanceChartView
 
 from src.queries.accqueries import ListAccountsQuery
 from src.datahandler.datahandler import AccountDataAnalyzer
@@ -36,9 +39,6 @@ from .piechartfunctions import _get_month_interval
 
 
 class OperationScreen(QMainWindow):
-    """
-    Operation screen
-    """
 
     def __init__(self, widget=None) -> None:
         super().__init__()
@@ -52,11 +52,19 @@ class OperationScreen(QMainWindow):
         self.set_account_dashlet_widget()
 
         # Modifiers
-        self.chart = categorypiechart.CategoricalPieChart()
-        self.chart.setBackgroundVisible(False)
+        self.pie_chart = categorypiechart.CategoricalPieChart()
+        self.pie_chart.setBackgroundVisible(False)
+        self.bar_chart = monthlybalancechart.MonthlyBalanceChart()
+
+        # Start with pie chart
+        self.chart = self.pie_chart
         self.chart_view = QChartView(self.chart)
         self.current_month_chart()  # generates the chart when opening this window
         self.chart_view.setRenderHint(QPainter.Antialiasing)
+
+        # Enable context menu for chart swapping
+        self.chart_view.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.chart_view.customContextMenuRequested.connect(self.show_chart_context_menu)
 
         self.currency_combobox.currentIndexChanged.connect(self.change_currency_chart)
         self.currency_combobox.currentIndexChanged.connect(self.set_account_dashlet_widget)
@@ -72,7 +80,7 @@ class OperationScreen(QMainWindow):
         """Set up the initial variables"""
         self.operation = None
         # variables for the pie chart
-        self.chart_mode = "month"
+        self.chart_mode = "month"  # For pie chart time period: "month" or "period"
         self.chart_type = "expense"
         self.operation_mode = "flow"  # Can be "flow" or "net"
         # self.chart_period = "month"
@@ -82,11 +90,15 @@ class OperationScreen(QMainWindow):
         self.custom_final_date = None
         self.period_dict = {}
 
+        # Variable to track which chart type is displayed: "pie" or "bar"
+        self.current_chart_type = "pie"
+
         self.currency_combobox.addItems(self.get_currency_list())
         self.currency = self.currency_combobox.currentText()
         self.username_label.setText(f"<b>Hello {self.widget.user_object.first_name}!</b>")
-        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
-        self.widget.__setattr__("account_objects", acc_list)
+        self.widget.__setattr__(
+            "account_objects", ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
+        )
 
     def setup_buttons(self) -> None:
         """Sets the signals for the buttons of the window."""
@@ -115,12 +127,18 @@ class OperationScreen(QMainWindow):
 
     def disable_operation_buttons(self):
         """checks if any account exists"""
-        acc_list = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
-        if not acc_list:
+        if not ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1):
             self.income_button.setEnabled(False)
             self.expense_button.setEnabled(False)
             self.transfer_button.setEnabled(False)
             self.readjustment_button.setEnabled(False)
+
+            self.custom_period_button.setEnabled(False)
+            self.switch_type_button.setEnabled(False)
+            self.previous_month_button.setEnabled(False)
+            self.next_month_button.setEnabled(False)
+            self.reset_month_button.setEnabled(False)
+            self.toggle_operation_mode_button.setEnabled(False)
 
     def set_account_dashlet_widget(self) -> None:
         """Sets the data to the dashlet of the accounts totals"""
@@ -155,15 +173,15 @@ class OperationScreen(QMainWindow):
         from_datetime, to_datetime = _get_month_interval(dttime.year, dttime.month)
         income_balance = AccountDataAnalyzer.get_user_totals_by_period(
             user_id=self.widget.user_object.user_id,
-            from_datetime=from_datetime,
-            to_datetime=to_datetime,
+            from_dt=from_datetime,
+            to_dt=to_datetime,
             operation_type="income",
             currency=self.currency,
         )
         expense_balance = AccountDataAnalyzer.get_user_totals_by_period(
             user_id=self.widget.user_object.user_id,
-            from_datetime=from_datetime,
-            to_datetime=to_datetime,
+            from_dt=from_datetime,
+            to_dt=to_datetime,
             operation_type="expense",
             currency=self.currency,
         )
@@ -212,6 +230,137 @@ class OperationScreen(QMainWindow):
         self.widget.addWidget(browse_account_window)
         self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
 
+    def show_chart_context_menu(self, position):
+        """Show context menu to switch between pie chart and bar chart"""
+        menu = QtWidgets.QMenu()
+
+        pie_action = menu.addAction("Switch to Pie Chart")
+        bar_action = menu.addAction("Switch to Bar Chart")
+
+        action = menu.exec_(self.chart_view.mapToGlobal(position))
+
+        if action == pie_action:
+            self.switch_to_pie_chart()
+        elif action == bar_action:
+            self.switch_to_bar_chart()
+
+    def switch_to_pie_chart(self):
+        """Switch from bar chart to pie chart"""
+        if self.current_chart_type == "pie":
+            return  # Already on pie chart
+
+        self.current_chart_type = "pie"
+
+        # Create a new pie chart instance to avoid Qt ownership issues
+        self.pie_chart = categorypiechart.CategoricalPieChart()
+        self.pie_chart.setBackgroundVisible(False)
+        self.chart = self.pie_chart
+
+        # Regenerate pie chart data
+        self.current_month_chart()
+
+        # Replace chart view with regular QChartView
+        old_chart_view = self.chart_view
+        self.chart_view = QChartView(self.pie_chart)
+        self.chart_view.setRenderHint(QPainter.Antialiasing)
+
+        # Enable context menu for chart swapping
+        self.chart_view.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.chart_view.customContextMenuRequested.connect(self.show_chart_context_menu)
+
+        # Replace the chart view in the layout
+        self.central_VR_Layout.replaceWidget(old_chart_view, self.chart_view)
+
+        # Remove old chart view from layout
+        old_chart_view.setParent(None)
+
+    def switch_to_bar_chart(self):
+        """Switch from pie chart to bar chart"""
+        if self.current_chart_type == "bar":
+            return  # Already on bar chart
+
+        self.current_chart_type = "bar"
+
+        # Create a new bar chart instance to avoid Qt ownership issues
+        self.bar_chart = monthlybalancechart.MonthlyBalanceChart()
+        self.chart = self.bar_chart
+
+        # Replace chart view with BalanceChartView for hover functionality
+        old_chart_view = self.chart_view
+        self.chart_view = BalanceChartView(self.bar_chart)
+        self.chart_view.setRenderHint(QPainter.Antialiasing)
+
+        # Enable context menu for chart swapping
+        self.chart_view.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.chart_view.customContextMenuRequested.connect(self.show_chart_context_menu)
+
+        # Replace the chart view in the layout
+        self.central_VR_Layout.replaceWidget(old_chart_view, self.chart_view)
+
+        # Remove old chart view from layout
+        old_chart_view.setParent(None)
+
+        # Update bar chart data
+        self.update_bar_chart()
+
+    def update_bar_chart(self):
+        """Update the bar chart with current time period data"""
+        from src.datahandler.datahandler import AccountDataAnalyzer
+        from calendar import monthrange
+
+        # Get current time period
+        if self.period_dict:
+            # Custom period - handle both date-only and datetime formats
+            initial_str = self.period_dict["initial"]
+            final_str = self.period_dict["final"]
+
+            # Try datetime format first, then date-only format
+            try:
+                from_datetime = datetime.strptime(initial_str, "%Y-%m-%d %H:%M:%S")
+                to_datetime = datetime.strptime(final_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                # Fall back to date-only format
+                from_datetime = datetime.strptime(initial_str, "%Y-%m-%d")
+                to_datetime = datetime.strptime(final_str, "%Y-%m-%d")
+                # Set time to end of day for to_datetime
+                to_datetime = datetime(to_datetime.year, to_datetime.month, to_datetime.day, 23, 59, 59)
+        else:
+            # Current selected datetime - use full month
+            from_datetime = datetime(self.selected_datetime.year, self.selected_datetime.month, 1)
+            to_datetime = datetime(
+                self.selected_datetime.year,
+                self.selected_datetime.month,
+                monthrange(self.selected_datetime.year, self.selected_datetime.month)[1],
+                23,
+                59,
+                59,
+            )
+
+        # Get real daily data from backend
+        daily_data = AccountDataAnalyzer.get_daily_totals(
+            user_id=self.widget.user_object.user_id,
+            from_dt=from_datetime,
+            to_dt=to_datetime,
+            currency=self.currency,
+            is_active=True,
+        )
+
+        # For the chart title, we need month and year
+        if self.period_dict:
+            # For custom periods, use the start date
+            month = from_datetime.month
+            year = from_datetime.year
+        else:
+            month = self.selected_datetime.month
+            year = self.selected_datetime.year
+
+        # Update chart with real data
+        self.bar_chart.update_chart(daily_data, month, year)
+
+        # Set tooltip data for custom chart view
+        if isinstance(self.chart_view, BalanceChartView):
+            self.chart_view.set_tooltip_data(self.bar_chart.day_labels, self.bar_chart.total_values)
+
     def current_month_chart(self):
         """generates a pie chart of the current month and resets all chart data variables"""
         # set the month in the selected datetime to one more mont
@@ -221,77 +370,97 @@ class OperationScreen(QMainWindow):
         self.chart_type = "expense"
         self.operation_mode = "flow"  # reset to flow mode
         self.toggle_operation_mode_button.setText("Flow")
-        data_inner, data_outer, category_data = piechartfunctions.load_data(
-            user_id=self.widget.user_object.user_id,
-            chart_mode=self.chart_mode,
-            chart_type=self.chart_type,
-            time_period=self.curr_datetime,
-            currency=self.currency,
-            operation_mode=self.operation_mode,
-        )
-        chart_title = piechartfunctions.update_n_format_chart_title(
-            user_id=self.widget.user_object.user_id,
-            currency=self.currency,
-            time_period=self.selected_datetime,
-            chart_mode=self.chart_mode,
-            chart_type=self.chart_type,
-            operation_mode=self.operation_mode,
-            category_data=category_data,
-        )
-        self.chart.setTitle(chart_title)
-        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+
+        # Only update pie chart if currently on pie chart
+        if self.current_chart_type == "pie":
+            data_inner, data_outer, category_data = piechartfunctions.load_data(
+                user_id=self.widget.user_object.user_id,
+                chart_mode=self.chart_mode,
+                chart_type=self.chart_type,
+                time_period=self.curr_datetime,
+                currency=self.currency,
+                operation_mode=self.operation_mode,
+            )
+            chart_title = piechartfunctions.update_n_format_chart_title(
+                user_id=self.widget.user_object.user_id,
+                currency=self.currency,
+                time_period=self.selected_datetime,
+                chart_mode=self.chart_mode,
+                chart_type=self.chart_type,
+                operation_mode=self.operation_mode,
+                category_data=category_data,
+            )
+            self.chart.setTitle(chart_title)
+            self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        else:  # bar chart
+            self.update_bar_chart()
+
         self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def next_month_chart(self):
-        """Changes to a pie chart for the next month"""
+        """Changes to a chart for the next month"""
         self.selected_datetime = piechartfunctions.get_next_month(self.selected_datetime)
-        data_inner, data_outer, category_data = piechartfunctions.load_data(
-            user_id=self.widget.user_object.user_id,
-            chart_mode="month",
-            chart_type=self.chart_type,
-            time_period=self.selected_datetime,
-            currency=self.currency,
-            operation_mode=self.operation_mode,
-        )
-        chart_title = piechartfunctions.update_n_format_chart_title(
-            user_id=self.widget.user_object.user_id,
-            currency=self.currency,
-            time_period=self.selected_datetime,
-            chart_mode="month",
-            chart_type=self.chart_type,
-            operation_mode=self.operation_mode,
-            category_data=category_data,
-        )
-        self.chart.setTitle(chart_title)
-        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+
+        if self.current_chart_type == "pie":
+            data_inner, data_outer, category_data = piechartfunctions.load_data(
+                user_id=self.widget.user_object.user_id,
+                chart_mode="month",
+                chart_type=self.chart_type,
+                time_period=self.selected_datetime,
+                currency=self.currency,
+                operation_mode=self.operation_mode,
+            )
+            chart_title = piechartfunctions.update_n_format_chart_title(
+                user_id=self.widget.user_object.user_id,
+                currency=self.currency,
+                time_period=self.selected_datetime,
+                chart_mode="month",
+                chart_type=self.chart_type,
+                operation_mode=self.operation_mode,
+                category_data=category_data,
+            )
+            self.chart.setTitle(chart_title)
+            self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        else:  # bar chart
+            self.update_bar_chart()
+
         self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def previous_month_chart(self):
-        """Changes to a pie chart for the previus month"""
+        """Changes to a chart for the previous month"""
         self.selected_datetime = piechartfunctions.get_prev_month(self.selected_datetime)
-        data_inner, data_outer, category_data = piechartfunctions.load_data(
-            user_id=self.widget.user_object.user_id,
-            chart_mode="month",
-            chart_type=self.chart_type,
-            time_period=self.selected_datetime,
-            currency=self.currency,
-            operation_mode=self.operation_mode,
-        )
-        chart_title = piechartfunctions.update_n_format_chart_title(
-            user_id=self.widget.user_object.user_id,
-            currency=self.currency,
-            time_period=self.selected_datetime,
-            chart_mode="month",
-            chart_type=self.chart_type,
-            operation_mode=self.operation_mode,
-            category_data=category_data,
-        )
-        self.chart.setTitle(chart_title)
-        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+
+        if self.current_chart_type == "pie":
+            data_inner, data_outer, category_data = piechartfunctions.load_data(
+                user_id=self.widget.user_object.user_id,
+                chart_mode="month",
+                chart_type=self.chart_type,
+                time_period=self.selected_datetime,
+                currency=self.currency,
+                operation_mode=self.operation_mode,
+            )
+            chart_title = piechartfunctions.update_n_format_chart_title(
+                user_id=self.widget.user_object.user_id,
+                currency=self.currency,
+                time_period=self.selected_datetime,
+                chart_mode="month",
+                chart_type=self.chart_type,
+                operation_mode=self.operation_mode,
+                category_data=category_data,
+            )
+            self.chart.setTitle(chart_title)
+            self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+        else:  # bar chart
+            self.update_bar_chart()
+
         self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def switch_chart_type(self):
         """Changes the pie chart from income to expenses and viceversa"""
+        # Only applicable for pie chart
+        if self.current_chart_type != "pie":
+            return
+
         # if custom period is being used, switch with custom period
         if self.period_dict:
             stime = self.period_dict
@@ -304,7 +473,7 @@ class OperationScreen(QMainWindow):
             self.chart_type = "income"
         data_inner, data_outer, category_data = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
-            chart_mode=self.chart_mode,
+            chart_mode="month",
             chart_type=self.chart_type,
             time_period=stime,
             currency=self.currency,
@@ -314,7 +483,7 @@ class OperationScreen(QMainWindow):
             user_id=self.widget.user_object.user_id,
             currency=self.currency,
             time_period=stime,
-            chart_mode=self.chart_mode,
+            chart_mode="month",
             chart_type=self.chart_type,
             operation_mode=self.operation_mode,
             category_data=category_data,
@@ -325,6 +494,10 @@ class OperationScreen(QMainWindow):
 
     def toggle_operation_mode(self):
         """Toggles between flow operations and net operations for the pie chart"""
+        # Only applicable for pie chart
+        if self.current_chart_type != "pie":
+            return
+
         # Toggle the operation mode
         if self.operation_mode == "flow":
             self.operation_mode = "net"
@@ -341,7 +514,7 @@ class OperationScreen(QMainWindow):
 
         data_inner, data_outer, category_data = piechartfunctions.load_data(
             user_id=self.widget.user_object.user_id,
-            chart_mode=self.chart_mode,
+            chart_mode="month",
             chart_type=self.chart_type,
             time_period=stime,
             currency=self.currency,
@@ -351,7 +524,7 @@ class OperationScreen(QMainWindow):
             user_id=self.widget.user_object.user_id,
             currency=self.currency,
             time_period=stime,
-            chart_mode=self.chart_mode,
+            chart_mode="month",
             chart_type=self.chart_type,
             operation_mode=self.operation_mode,
             category_data=category_data,
@@ -362,9 +535,9 @@ class OperationScreen(QMainWindow):
 
     def custom_date_range_chart(self):
         """
-        Generates a new piechart with selected time period in the calendar widget. First it opens up
+        Generates a new chart with selected time period in the calendar widget. First it opens up
         a calendar widget to select the 2 dates that conform the desired period of time. Then uses
-        it to gather the information needed for the pie chart.
+        it to gather the information needed for the chart.
         """
         calendar_dialog = calendardialog.CalendarDialog()
         calendar_dialog.select_button.clicked.connect(calendar_dialog.get_date_range)
@@ -373,61 +546,70 @@ class OperationScreen(QMainWindow):
         self.custom_initial_date = calendar_dialog.initial_d
         self.custom_final_date = calendar_dialog.final_d
         if self.custom_initial_date and self.custom_final_date:
-            self.chart_mode = "period"
-        else:
-            return
+            if self.current_chart_type == "pie":
+                data_inner, data_outer, category_data = piechartfunctions.load_data(
+                    user_id=self.widget.user_object.user_id,
+                    chart_mode="period",
+                    chart_type=self.chart_type,
+                    time_period={
+                        "initial": str(self.custom_initial_date),
+                        "final": str(self.custom_final_date),
+                    },
+                    currency=self.currency,
+                    operation_mode=self.operation_mode,
+                )
+                chart_title = piechartfunctions.update_n_format_chart_title(
+                    user_id=self.widget.user_object.user_id,
+                    currency=self.currency,
+                    time_period={
+                        "initial": str(self.custom_initial_date),
+                        "final": str(self.custom_final_date),
+                    },
+                    chart_mode="period",
+                    chart_type=self.chart_type,
+                )
+                self.chart.setTitle(chart_title)
+                self.chart.generate_chart(data_inner, data_outer, self.chart_type)
+            else:  # bar chart
+                self.period_dict = {
+                    "initial": str(self.custom_initial_date),
+                    "final": str(self.custom_final_date),
+                }
+                self.update_bar_chart()
+        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
-        if self.custom_initial_date and self.custom_final_date:
-            self.period_dict = {
-                "initial": str(self.custom_initial_date),
-                "final": str(self.custom_final_date),
-            }
+    def change_currency_chart(self):
+        """Change the currency of the chart"""
+        self.currency = self.currency_combobox.currentText()
+
+        if self.current_chart_type == "pie":
+            if self.period_dict:
+                stime = self.period_dict
+            else:
+                stime = self.selected_datetime
+
             data_inner, data_outer, category_data = piechartfunctions.load_data(
                 user_id=self.widget.user_object.user_id,
-                chart_mode=self.chart_mode,
+                chart_mode="month" if not self.period_dict else "period",
                 chart_type=self.chart_type,
-                time_period=self.period_dict,
+                time_period=stime,
                 currency=self.currency,
                 operation_mode=self.operation_mode,
             )
             chart_title = piechartfunctions.update_n_format_chart_title(
                 user_id=self.widget.user_object.user_id,
                 currency=self.currency,
-                time_period=self.period_dict,
-                chart_mode=self.chart_mode,
+                time_period=stime,
+                chart_mode="month" if not self.period_dict else "period",
                 chart_type=self.chart_type,
+                operation_mode=self.operation_mode,
+                category_data=category_data,
             )
             self.chart.setTitle(chart_title)
             self.chart.generate_chart(data_inner, data_outer, self.chart_type)
-        self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
+        else:  # bar chart
+            self.update_bar_chart()
 
-    def change_currency_chart(self):
-        """Change the currency of the pie chart"""
-        if self.chart_mode == "period" and self.period_dict:
-            stime = self.period_dict
-        else:
-            stime = self.selected_datetime
-        self.currency = self.currency_combobox.currentText()
-
-        data_inner, data_outer, category_data = piechartfunctions.load_data(
-            user_id=self.widget.user_object.user_id,
-            chart_mode=self.chart_mode,
-            chart_type=self.chart_type,
-            time_period=stime,
-            currency=self.currency,
-            operation_mode=self.operation_mode,
-        )
-        chart_title = piechartfunctions.update_n_format_chart_title(
-            user_id=self.widget.user_object.user_id,
-            currency=self.currency,
-            time_period=stime,
-            chart_mode=self.chart_mode,
-            chart_type=self.chart_type,
-            operation_mode=self.operation_mode,
-            category_data=category_data,
-        )
-        self.chart.setTitle(chart_title)
-        self.chart.generate_chart(data_inner, data_outer, self.chart_type)
         self.account_dashlet.set_monthly_balance(self.get_monthly_balance())
 
     def refresh_all_groups(self) -> None:

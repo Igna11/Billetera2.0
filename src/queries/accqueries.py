@@ -4,35 +4,42 @@ billeterapp 2.0 - Junio 2024
 
 from typing import List
 
-from pydantic import BaseModel
+from src.models.accmodel import Accounts
+from src.dbhandlers.accountsdb import AccountsDB
+from src.errorhandler.accountserrors import AccountNotFoundError
 
-from src.models.accmodel import UserAccounts
+from pydantic_extra_types.currency_code import ISO4217
 
 
-class GetAccountByIDQuery(BaseModel):
+class GetAccountByIDQuery(Accounts):
 
     user_id: str
     account_id: str
 
-    def execute(self) -> UserAccounts:
-        account = UserAccounts.get_account_by_id(self.user_id, self.account_id)
-        return account
+    def execute(self) -> Accounts:
+        acc_db = AccountsDB(self.user_id)
+        acc_data = acc_db.get_account_by_id(self.account_id)
+        if not acc_data:
+            raise AccountNotFoundError
+        return Accounts.from_row(acc_data)
 
 
-class GetAccountByTableNameQuery(BaseModel):
-
-    user_id: str
-    table_name: str
-
-    def execute(self) -> UserAccounts:
-        account = UserAccounts.get_account_by_table_name(self.user_id, self.table_name)
-        return account
-
-
-class ListAccountsQuery(BaseModel):
+class GetAccountByUniqueNameQuery(Accounts):
 
     user_id: str
+    account_name: str
+    account_currency: ISO4217
 
-    def execute(self, **kwargs: int | str) -> List[UserAccounts]:
-        accounts = UserAccounts.get_all_accounts(self.user_id, **kwargs)
-        return accounts
+    def execute(self) -> Accounts:
+        acc_db = AccountsDB(self.user_id)
+        acc_data = acc_db.get_account_by_name_and_currency(self.account_name, self.account_currency)
+        if not acc_data:
+            raise AccountNotFoundError
+        return Accounts.from_row(acc_data)
+
+
+class ListAccountsQuery(Accounts):
+
+    def execute(self, **kwargs: int | str) -> List[Accounts]:
+        accounts = AccountsDB(self.user_id).get_accounts_lists(**kwargs)
+        return [Accounts.from_row(row) for row in accounts]

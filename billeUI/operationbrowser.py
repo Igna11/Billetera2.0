@@ -17,11 +17,14 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QMainWindow, QLabel, QStyledItemDelegate, QComboBox, QCompleter, QMessageBox
 
+from pydantic import ValidationError
+
 from src.queries.accqueries import ListAccountsQuery
 from src.queries.opqueries import GetOperationByIDQuery, ListOperationsQuery
 
-from src.models.opmodel import UserOperations
-from src.models.opgroupsmodel import OperationGroups
+from src.models.opmodel import Operations
+from src.queries.groupqueries import ListGroupsQuery, GetGroupByIDQuery
+from src.commands.groupcommands import CreateOperationGroupCommand
 from src.ophandlers.deletehandler import DeletionHandler
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
@@ -164,14 +167,13 @@ class GroupComboBoxDelegate(QStyledItemDelegate):
                     )
 
                     if reply == QMessageBox.Yes:
-                        # Create the group
-                        new_group = OperationGroups(
+                        new_group = CreateOperationGroupCommand(
                             user_id=self.user_id,
                             group_name=group_name,
                             group_currency=account_currency,
                             status="open",
-                        )
-                        new_group.create()
+                        ).execute()
+                        # new_group.create()
                         group_id = new_group.group_id
 
                         # Refresh the groups list in the parent browser
@@ -214,7 +216,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         # Load groups for the combo box delegate
         self.groups_list = []
         try:
-            groups = OperationGroups.get_groups_list(user_id=self.widget.user_object.user_id, status="open")
+            groups = ListGroupsQuery(user_id=self.widget.user_object.user_id, status="open").execute()
             self.groups_list = [(group.group_id, group.group_name) for group in groups]
         except Exception:
             self.groups_list = []
@@ -329,15 +331,14 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         return all_operations
 
     def get_operations_data(self, index: int) -> None:
-        """Makes de query to fetch all operations from a given account"""
+        """Makes the query to fetch all operations from a given account"""
         if index == len(self.accounts_object):
-            acc_data_obj = AccountDataAnalyzer(user_id=self.widget.user_object.user_id)
-            self.operations_list = acc_data_obj.get_all_operations()
+            self.operations_list = ListOperationsQuery(user_id=self.widget.user_object.user_id).execute(order="DESC")
         else:
-            self.acc_id = self.accounts_object[index].model_dump()["account_id"]
-            self.operations_list = ListOperationsQuery(
-                user_id=self.widget.user_object.user_id, account_id=self.acc_id
-            ).execute(order_by_datetime="DESC")
+            self.acc_id = self.accounts_object[index].to_dict().get("account_id")
+            self.operations_list = ListOperationsQuery(user_id=self.widget.user_object.user_id).execute(
+                account_id=self.acc_id, order="DESC"
+            )
         self.current_account_index = index
 
     def set_table_data(self, index: int) -> None:
@@ -408,7 +409,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         else:
             self.operation_table_widget.clearContents()
 
-    def set_table_items(self, current_operations_page: List[UserOperations]) -> None:
+    def set_table_items(self, current_operations_page: List[Operations]) -> None:
         """wrapper function to set the info into the table"""
         for row_index, operation in enumerate(current_operations_page):
             items = [
@@ -429,7 +430,10 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             group_name = "N/A"
             if operation.group_id:
                 try:
-                    group = OperationGroups.get_group_by_id(self.widget.user_object.user_id, operation.group_id)
+                    group = GetGroupByIDQuery(
+                        user_id=self.widget.user_object.user_id, group_id=operation.group_id
+                    ).execute()
+                    # group = OperationGroups.get_group_by_id(self.widget.user_object.user_id, operation.group_id)
                     group_name = group.group_name
                 except Exception:
                     group_name = "N/A"
@@ -565,6 +569,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             "Are you sure you want to delete the selected operations?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
         )
+        error_flag = False
         if reply == QtWidgets.QMessageBox.Yes:
             rows_to_delete = []
             for row in range(self.operation_table_widget.rowCount()):
@@ -578,15 +583,34 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                 op = GetOperationByIDQuery(
                     user_id=self.widget.user_object.user_id, account_id=acc_id, operation_id=op_id
                 ).execute()
-                deletion = DeletionHandler(**op.model_dump())
-                deletion.set_account_total()
-                cml = deletion.set_cumulatives()
-                deletion.save(cml)
+                try:
+                    deletion = DeletionHandler(**op.model_dump())
+                    deletion.set_account_total()
+                    cml = deletion.set_cumulatives()
+                    deletion.save(cml)
+                except ValidationError as err_info:
+                    print(err_info)
+                    QTimer.singleShot(
+                        1,
+                        lambda: animatedlabel.AnimatedLabel(
+                            "Could not delete operation: {op.operation_datetime}: {op.operation_type} - {op.amount}",
+                            message_type="error",
+                        ).display(),
+                    )
+                    self.status_label.setText(
+                        """<font color='red'>
+                        Can not delete this operation because the account total would become negative.
+                        </font>"""
+                    )
+                    error_flag = True
 
             # QTimer used to deffer slightly the generation of the label to next iteration of the event loop, so the main
             # window get of focus again. Otherwise it will not appear.
-            QTimer.singleShot(1, lambda: animatedlabel.AnimatedLabel("Operations deleted successfully ✅").display())
-            self.status_label.setText(f"<font color='green'>{len(rows_to_delete)} operations deleted.</font>")
+            if not error_flag:
+                QTimer.singleShot(
+                    1, lambda: animatedlabel.AnimatedLabel("Operations deleted successfully ✅").display()
+                )
+                self.status_label.setText(f"<font color='green'>{len(rows_to_delete)} operations deleted.</font>")
             self.current_account_index = -1  # fuerza recarga
             self.set_table_data(self.accounts_comboBox.currentIndex())
             self.delete_op_button.setVisible(False)
@@ -608,7 +632,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
     def refresh_groups_list(self) -> None:
         """Refresh the groups list for the combo box delegate"""
         try:
-            groups = OperationGroups.get_groups_list(user_id=self.widget.user_object.user_id, status="open")
+            groups = ListGroupsQuery(user_id=self.widget.user_object.user_id, status="open").execute()
             self.groups_list = [(group.group_id, group.group_name) for group in groups]
             # Update the delegate with the new groups list
             self.group_delegate.groups_list = self.groups_list

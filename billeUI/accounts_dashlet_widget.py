@@ -10,7 +10,7 @@ from decimal import Decimal
 from PyQt5.QtWidgets import QWidget
 from PyQt5.uic import loadUi
 
-from src.models.accmodel import UserAccounts
+from src.models.accmodel import Accounts
 
 from billeUI import UISPATH, currency_format
 
@@ -79,7 +79,7 @@ class AccountDashletWidget(QWidget):
             self.acc_index = len(self.acc_list) - 1
         self.set_labels()
 
-    def update_data(self, data: List[UserAccounts]) -> None:
+    def update_data(self, data: List[Accounts]) -> None:
         self.acc_list = data
         self._calculate_total()
         self.set_labels()

@@ -9,8 +9,8 @@ from PyQt5 import QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import QMainWindow
 
-from src.models.accmodel import UserAccounts, InvalidAccountNameError
-from src.commands.acccommands import CreateUsersAccountCommand, AccountAlreadyExistsError
+from src.models.accmodel import InvalidAccountNameError
+from src.commands.acccommands import CreateAccountCommand, AccountAlreadyExistsError
 
 from billeUI import UISPATH, operationscreen, animatedlabel
 
@@ -36,9 +36,8 @@ class CreateAccount(QMainWindow):
         acc_name = self.acc_name_line.text()
         acc_currency = self.currency_comboBox.currentText()
         try:
-            UserAccounts.create_acc_list_table(user_id=self.widget.user_object.user_id)
-            CreateUsersAccountCommand(
-                email=self.widget.user_object.email, account_name=acc_name, account_currency=acc_currency
+            CreateAccountCommand(
+                user_id=self.widget.user_object.user_id, account_name=acc_name, account_currency=acc_currency
             ).execute()
             animatedlabel.AnimatedLabel(f"Account '{acc_name}' successfully created! ✅").display()
             self.create_account_label.setText(

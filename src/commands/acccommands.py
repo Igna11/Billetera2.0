@@ -5,84 +5,55 @@ Higher order module for creation of databases, users and accounts.
 It uses the models.py module.
 """
 
-from typing import Optional
-from pydantic import BaseModel, EmailStr, model_validator
+from datetime import datetime, UTC
 
-from src.models.usrmodel import User
-from src.models.accmodel import UserAccounts, AccountNotFoundError
-
-
-class AccountAlreadyExistsError(Exception):
-    pass
+from src.dbhandlers.accountsdb import AccountsDB
+from src.models.accmodel import Accounts
+from src.errorhandler.accountserrors import AccountNotFoundError, AccountAlreadyExistsError
 
 
-class CreateUsersAccountCommand(BaseModel):
-    """Creates an account table with name <table_name> for a given user in the accounts_database"""
+class CreateAccountCommand(Accounts):
 
-    email: Optional[EmailStr] = None
-    user_id: Optional[str] = None
-    account_name: str
-    account_currency: str
+    def execute(self) -> Accounts:
+        self.created_at = self.updated_at = datetime.now(UTC)
+        acc_db = AccountsDB(self.user_id)
 
-    @model_validator(mode="after")
-    def check_mail_or_id(self):
-        """Checks if at least one of email or user_id is used as input"""
-        if not self.email and not self.user_id:
-            raise ValueError("You must provide either an email or an user_id")
+        if acc_db.get_account_by_name_and_currency(self.account_name, self.account_currency):  # type: ignore[arg-type]
+            raise AccountAlreadyExistsError
+
+        return Accounts.from_row(acc_db.create_account(self))
+
+
+class EditAccountCommand(Accounts):
+
+    def execute(self) -> Accounts:
+        self.updated_at = datetime.now(UTC)
+        acc_db = AccountsDB(self.user_id)
+        acc_db_data = acc_db.get_account_by_id(self.account_id)
+
+        if not acc_db_data:
+            raise AccountNotFoundError
+
+        if not self.account_name:
+            self.account_name = acc_db_data["account_name"]
+        if not self.account_currency:
+            self.account_currency = acc_db_data["account_currency"]
+        # if self.is_active is None:
+        #    self.is_active = acc_db_data["is_active"]
+
+        self.updated_at = datetime.now(UTC)
+        acc_db.update_account(self)
+
         return self
 
-    def execute(self) -> UserAccounts:
-        if self.user_id:
-            user = User.get_user_by_id(self.user_id)
-        else:
-            user = User.get_user_by_email(self.email)
-        try:
-            UserAccounts.get_account_by_table_name(user.user_id, f"{self.account_name}_{self.account_currency}")
-            raise AccountAlreadyExistsError
-        except AccountNotFoundError:
-            pass
-        user_account = UserAccounts(
-            user_id=user.user_id, account_name=self.account_name, account_currency=self.account_currency
-        )
-        user_account.create_account_operations_tables()
-        return user_account
 
-
-class EditUsersAccountCommand(BaseModel):
-    """Edits an account table with name <table_name> for a given user in the accounts_database"""
-
-    user_id: str
-    account_id: str
-    account_name: Optional[str] = None
-    account_currency: Optional[str] = None
-    account_total: Optional[float] = None
-    is_active: Optional[bool] = None
-
-    def execute(self) -> UserAccounts:
-        user = User.get_user_by_id(self.user_id)
-        user_acc = UserAccounts.get_account_by_id(user.user_id, self.account_id)
-
-        flag = False
-        if self.account_name:
-            user_acc.account_name = self.account_name
-            flag = True
-        if self.account_currency:
-            user_acc.account_currency = self.account_currency
-            flag = True
-        if self.account_total:
-            user_acc.account_total = self.account_total
-        if self.is_active is not None:
-            user_acc.is_active = self.is_active
-        user_acc.save(change_table_name_flag=flag)
-        return user_acc
-
-
-class DeleteUsersAccountCommand(BaseModel):
-    """Deletes a given account from table accounts and drops the <account_name> talbe"""
-
-    user_id: str
-    account_id: str
+class DeleteAccountCommand(Accounts):
 
     def execute(self) -> None:
-        user = User.get_user_by_id(self.user_id)
-        UserAccounts.delete_account(user.user_id, self.account_id)
+        acc_db = AccountsDB(self.user_id)
+        acc_db_data = acc_db.get_account_by_id(self.account_id)
+
+        if not acc_db_data:
+            raise AccountNotFoundError
+
+        acc_db.delete_account(account_id=self.account_id)

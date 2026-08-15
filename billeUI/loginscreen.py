@@ -11,9 +11,10 @@ from PyQt5.QtWidgets import QMainWindow
 
 from pydantic import ValidationError
 
-from src.models.usrmodel import User, UserNotFoundError
-from src.pwhandler.pwhandler import UnauthorizedError
-from src.queries.usrqueries import GetUserByEmailQuery
+from src.pwhandler.pwhandler import UnauthorizedError, verify_password
+from src.queries.usersqueries import GetUserByEmailQuery
+from src.dbhandlers.usersdb import UsersDB
+from src.errorhandler.userserrors import UserNotFoundError
 
 from billeUI import UISPATH
 from billeUI import welcomescreen
@@ -41,19 +42,24 @@ class LoginScreen(QMainWindow):
         user_email = self.user_email_line.text().lower()
         password = self.password_line.text()
         try:
-            user = GetUserByEmailQuery(user_email=user_email).execute()
-            User.authenticate(user_id=user.user_id, password=password)
+            user = GetUserByEmailQuery(email=user_email).execute()
+            user_db = UsersDB()
+            user_with_password = user_db.get_user_with_password(user_email)
+            if not user_with_password:
+                raise UserNotFoundError
+            if not verify_password(user_with_password["password"], password):
+                raise UnauthorizedError
             self.login_label.setText("<font color='green'>Log in successfull</font>")
             self.widget.user_object = user
             operation_screen = operationscreen.OperationScreen(widget=self.widget)
             self.widget.addWidget(operation_screen)
             self.widget.setCurrentIndex(self.widget.currentIndex() + 1)
         except UnauthorizedError:
-            self.login_label.setText("<font color='red'>Wrong password.</font>")
+            self.login_label.setText("<font color='red'>User or password invalid.</font>")
         except ValidationError:
             self.login_label.setText("<font color='red'>Invalid email.</font>")
         except UserNotFoundError:
-            self.login_label.setText("<font color='red'>Invalid username.</font>")
+            self.login_label.setText("<font color='red'>User or password invalid.</font>")
 
     def back(self):
         """Returns to the WelcomeScreen menu"""

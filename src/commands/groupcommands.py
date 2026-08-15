@@ -1,31 +1,33 @@
 """
 billeterapp 2.0 - Agosto 2025
+Updated - Mayo 2026
 
 High level module to handle groups of operations
 """
 
+from datetime import datetime, UTC
 from decimal import Decimal
 from typing import Optional, Literal
 
 from src.models.opgroupsmodel import OperationGroups
-
-
-class NoEditedFieldsError(Exception):
-    pass
+from src.dbhandlers.opgroupsdb import OperationGroupsDB
+from src.errorhandler.opgroupserrors import GroupNotFoundError, NoEditedGroupFieldsError
 
 
 class CreateOperationGroupCommand(OperationGroups):
 
-    status: str = "open"
+    status: Literal["open", "closed"] = "open"
 
-    def execute(self):
-        oper_group = OperationGroups(**self.model_dump())
-        group = oper_group.create()
-        return group
+    def execute(self) -> OperationGroups:
+        self.created_at = self.updated_at = datetime.now(UTC)
+        group_db = OperationGroupsDB(self.user_id)  # type: ignore[arg-type]
+        group_db.create_group(self)
+        return self
 
 
 class EditOperationGroupCommand(OperationGroups):
 
+    user_id: str
     group_id: str
     group_name: Optional[str] = None
     group_currency: Optional[str] = None
@@ -33,13 +35,13 @@ class EditOperationGroupCommand(OperationGroups):
     category: Optional[str] = None
     subcategory: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[Literal["open", "closed", "cancelled"]] = None
+    status: Optional[Literal["open", "closed"]] = None
 
-    def execute(self):
-
+    def execute(self) -> OperationGroups:
         field_check_list = [
             self.group_name,
             self.group_currency,
+            self.original_amount,
             self.category,
             self.subcategory,
             self.description,
@@ -47,35 +49,48 @@ class EditOperationGroupCommand(OperationGroups):
         ]
 
         if all(field is None for field in field_check_list):
-            raise NoEditedFieldsError
+            raise NoEditedGroupFieldsError
 
-        oper_group = OperationGroups.get_group_by_id(self.user_id, self.group_id)
+        group_db = OperationGroupsDB(self.user_id)  # type: ignore[arg-type]
+        group_data = group_db.get_group_by_id(self.group_id)
+
+        if not group_data:
+            raise GroupNotFoundError
+
+        # Get existing group and update only provided fields
+        existing_group = OperationGroups.from_row(group_data)
 
         if self.group_name:
-            oper_group.group_name = self.group_name
+            existing_group.group_name = self.group_name
         if self.group_currency:
-            oper_group.group_currency = self.group_currency
+            existing_group.group_currency = self.group_currency
         if self.original_amount:
-            oper_group.original_amount = self.original_amount
+            existing_group.original_amount = self.original_amount
         if self.category:
-            oper_group.category = self.category
+            existing_group.category = self.category
         if self.subcategory:
-            oper_group.subcategory = self.subcategory
+            existing_group.subcategory = self.subcategory
         if self.description:
-            oper_group.description = self.description
+            existing_group.description = self.description
         if self.status:
-            oper_group.status = self.status
+            existing_group.status = self.status
 
-        return oper_group.save()
+        existing_group.updated_at = datetime.now(UTC)
+        group_db.update_group(existing_group)
+
+        return existing_group
 
 
 class DeleteOperationGroupCommand(OperationGroups):
 
     user_id: str
     group_id: str
-    group_name: str = None
-    status: str = "cancelled"
 
-    def execute(self):
-        group = OperationGroups.get_group_by_id(user_id=self.user_id, group_id=self.group_id)
-        group.delete()
+    def execute(self) -> None:
+        group_db = OperationGroupsDB(self.user_id)  # type: ignore[arg-type]
+        group_data = group_db.get_group_by_id(self.group_id)
+
+        if not group_data:
+            raise GroupNotFoundError
+
+        group_db.delete_group(self.group_id)

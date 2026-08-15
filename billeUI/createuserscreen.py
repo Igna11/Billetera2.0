@@ -14,10 +14,15 @@ from billeUI import UISPATH
 from billeUI import welcomescreen, operationscreen
 
 from src import BASEPATH
-from src.models.usrmodel import User
-from src.models.accmodel import UserAccounts
-from src.commands.usrcommands import CreateUserCommand, UserAlreadyExistsError
-from src.queries.usrqueries import GetUserByEmailQuery
+from src.dbtables.accountstable import initialize_accounts_table
+from src.dbtables.operationstable import initialize_operations_table
+from src.dbtables.detailstable import initialize_details_table
+from src.dbtables.groupstable import initialize_groups_table
+from src.commands.userscommands import CreateUserCommand, UserAlreadyExistsError
+from src.queries.usersqueries import GetUserByEmailQuery
+from src.dbhandlers.accountsdb import AccountsDB
+from src.dbhandlers.usersdb import UsersDB
+from src.pwhandler.pwhandler import verify_password
 
 DATAPATH = os.path.join(BASEPATH, "data")
 
@@ -48,10 +53,16 @@ class CreateUserScreen(QMainWindow):
             self.create_user_label.setText("<font color='red'><b>Passwords don't match.</b></font>")
         else:
             try:
-                user = CreateUserCommand(first_name=username, email=useremail, password=password).execute()
+                user = CreateUserCommand(first_name=username, email=useremail).execute(plain_text_passwd=password)
                 db_directory_path = os.path.join(DATAPATH, user.user_id)
                 os.mkdir(db_directory_path)
-                UserAccounts.create_acc_list_table(user.user_id)
+                # Initialize accounts database for the user
+                initialize_accounts_table(user_id=user.user_id)
+                initialize_operations_table(user_id=user.user_id)
+                initialize_groups_table(user_id=user.user_id)
+                initialize_details_table(user_id=user.user_id)
+                AccountsDB(user_id=user.user_id)
+                # The accounts table is created automatically by DatabaseConnection
                 self.create_user_label.setText(f"<font color='green'>User {username} successfully created.</font>")
                 popup_message = self.usr_created_msg.question(
                     self,
@@ -66,13 +77,19 @@ class CreateUserScreen(QMainWindow):
                     self.back()
             except UserAlreadyExistsError:
                 self.create_user_label.setText(f"<font color='red'>User with email {useremail} already exists.</font>")
-            except ValueError:
+            except ValueError as e:
+                print(e)
                 self.create_user_label.setText(f"<font color='red'>Email format '{useremail}' not valid.</font>")
 
     def login(self, useremail, password):
         """Logs in and takes the user to the OperationScreen menu."""
-        user = GetUserByEmailQuery(user_email=useremail).execute()
-        User.authenticate(user_id=user.user_id, password=password)
+        user = GetUserByEmailQuery(email=useremail).execute()
+        user_db = UsersDB()
+        user_with_password = user_db.get_user_with_password(useremail)
+        if not user_with_password:
+            raise Exception("User not found")
+        if not verify_password(user_with_password["password"], password):
+            raise Exception("Invalid password")
         self.widget.user_object = user
         operation_screen = operationscreen.OperationScreen(widget=self.widget)
         self.widget.addWidget(operation_screen)

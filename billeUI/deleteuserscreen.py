@@ -9,10 +9,11 @@ from PyQt5 import QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import QLineEdit, QMessageBox, QMainWindow
 
-from src.models.usrmodel import UserNotFoundError
-from src.queries.usrqueries import GetUserByEmailQuery
-from src.commands.usrcommands import DeleteUserCommand
-from src.pwhandler.pwhandler import UnauthorizedError
+from src.errorhandler.userserrors import UserNotFoundError
+from src.queries.usersqueries import GetUserByEmailQuery
+from src.commands.userscommands import DeleteUserCommand
+from src.pwhandler.pwhandler import UnauthorizedError, verify_password
+from src.dbhandlers.usersdb import UsersDB
 
 from billeUI import welcomescreen
 from billeUI import UISPATH
@@ -41,10 +42,16 @@ class DeleteUserScreen(QMainWindow):
             return
         username = self.user_name_line.text()
         useremail = self.email_line.text()
-        password = self.password_line.text().encode("utf-8")
+        password = self.password_line.text()
         try:
-            user = GetUserByEmailQuery(user_email=useremail).execute()
-            DeleteUserCommand(user_id=user.user_id, password=password).execute()
+            user = GetUserByEmailQuery(email=useremail).execute()
+            user_db = UsersDB()
+            user_with_password = user_db.get_user_with_password(useremail)
+            if not user_with_password:
+                raise UserNotFoundError
+            if not verify_password(user_with_password["password"], password):
+                raise UnauthorizedError
+            DeleteUserCommand(user_id=user.user_id).execute()
             popup_message = self.usr_deleted_msg.question(
                 self,
                 "User deleted.",

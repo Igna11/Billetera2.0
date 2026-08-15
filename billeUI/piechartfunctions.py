@@ -75,9 +75,9 @@ def load_data(
     """
     # Choose the appropriate method based on operation_mode
     categorize_method = (
-        AccountDataAnalyzer.categorize_flow_operations
+        AccountDataAnalyzer.get_user_flow_totals_by_category
         if operation_mode == "flow"
-        else AccountDataAnalyzer.categorize_net_operations
+        else AccountDataAnalyzer.get_user_net_totals_by_category
     )
 
     if chart_mode == "month":
@@ -86,38 +86,42 @@ def load_data(
 
         data_outer = categorize_method(
             user_id=user_id,
-            from_datetime=from_datetime,
-            to_datetime=to_datetime,
+            from_dt=from_datetime,
+            to_dt=to_datetime,
             operation_type=chart_type,
             data_type="category",
             currency=currency,
+            is_active=True,
         )
         data_inner = categorize_method(
             user_id=user_id,
-            from_datetime=from_datetime,
-            to_datetime=to_datetime,
+            from_dt=from_datetime,
+            to_dt=to_datetime,
             operation_type=chart_type,
             data_type="subcategory",
             currency=currency,
+            is_active=True,
         )
 
     elif chart_mode == "period":
         ci_date, cf_date = time_period.values()
         data_outer = categorize_method(
             user_id=user_id,
-            from_datetime=ci_date,
-            to_datetime=cf_date,
+            from_dt=ci_date,
+            to_dt=cf_date,
             operation_type=chart_type,
             data_type="category",
             currency=currency,
+            is_active=True,
         )
         data_inner = categorize_method(
             user_id=user_id,
-            from_datetime=ci_date,
-            to_datetime=cf_date,
+            from_dt=ci_date,
+            to_dt=cf_date,
             operation_type=chart_type,
             data_type="subcategory",
             currency=currency,
+            is_active=True,
         )
     else:
         raise ValueError(
@@ -158,8 +162,8 @@ def update_n_format_chart_title(
         if operation_mode == "flow":
             total = AccountDataAnalyzer.get_user_totals_by_period(
                 user_id=user_id,
-                from_datetime=from_datetime,
-                to_datetime=to_datetime,
+                from_dt=from_datetime,
+                to_dt=to_datetime,
                 operation_type=chart_type,
                 currency=currency,
             )
@@ -172,8 +176,8 @@ def update_n_format_chart_title(
         if operation_mode == "flow":
             total = AccountDataAnalyzer.get_user_totals_by_period(
                 user_id=user_id,
-                from_datetime=ci_date,
-                to_datetime=cf_date,
+                from_dt=ci_date,
+                to_dt=cf_date,
                 operation_type=chart_type,
                 currency=currency,
             )

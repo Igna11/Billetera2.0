@@ -26,9 +26,9 @@ from PyQt5.QtWidgets import (
     QRadioButton,
 )
 
-from src.models.accmodel import UserAccounts, InvalidAccountNameError
+from src.models.accmodel import Accounts, InvalidAccountNameError
 from src.queries.accqueries import ListAccountsQuery, GetAccountByIDQuery
-from src.commands.acccommands import EditUsersAccountCommand, DeleteUsersAccountCommand
+from src.commands.acccommands import EditAccountCommand, DeleteAccountCommand
 
 from billeUI import operationscreen, currency_format, animatedlabel
 from billeUI import UISPATH, ICONSPATH
@@ -38,7 +38,7 @@ class AccountRow(QWidget):
 
     account_modified = pyqtSignal(str, str, bool)
 
-    def __init__(self, account: UserAccounts, parent=None):
+    def __init__(self, account: Accounts, parent=None):
         super().__init__(parent)
         # Needed for the hover effect
         self.account = account
@@ -153,7 +153,7 @@ class AccountRow(QWidget):
         )
 
         if reply == QMessageBox.Yes:
-            DeleteUsersAccountCommand(user_id=self.account.user_id, account_id=self.account.account_id).execute()
+            DeleteAccountCommand(user_id=self.account.user_id, account_id=self.account.account_id).execute()
             # refresh view without the deleted widget
             animatedlabel.AnimatedLabel("Account deleted ✅").display()
             parent_layout = self.parentWidget().layout()
@@ -163,12 +163,12 @@ class AccountRow(QWidget):
 
     def enable_n_disable_account(self) -> None:
         if self.account.is_active:
-            EditUsersAccountCommand(
+            EditAccountCommand(
                 user_id=self.account.user_id, account_id=self.account.account_id, is_active=False
             ).execute()
             animatedlabel.AnimatedLabel("Account disabled! ✅", message_type="warning").display()
         else:
-            EditUsersAccountCommand(
+            EditAccountCommand(
                 user_id=self.account.user_id, account_id=self.account.account_id, is_active=True
             ).execute()
             animatedlabel.AnimatedLabel("Account enabled! ✅").display()
@@ -213,7 +213,7 @@ class AccountBrowser(QMainWindow):
         row_to_be_saved = [row for row in self.acc_row_list if row.account_id in self.account_changed]
         for row in row_to_be_saved:
             try:
-                EditUsersAccountCommand(
+                EditAccountCommand(
                     user_id=self.user_id, account_id=row.account_id, account_name=row.new_acc_name
                 ).execute()
                 row.name_label.setStyleSheet("color: black; font-weight: bold;")
@@ -224,7 +224,7 @@ class AccountBrowser(QMainWindow):
             except InvalidAccountNameError:
                 animatedlabel.AnimatedLabel("Invalid name!", message_type="error").display()
 
-    def add_account(self, account: UserAccounts) -> AccountRow:
+    def add_account(self, account: Accounts) -> AccountRow:
         row = AccountRow(account)
         row.account_modified.connect(self.handle_account_modified)
         self.scroll_layout.addWidget(row)

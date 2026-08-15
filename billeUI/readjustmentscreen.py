@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QMainWindow, QCompleter
 
 from src.queries.accqueries import ListAccountsQuery
 from src.ophandlers.operationhandler import OperationHandler
-from src.queries.opqueries import GetUniqueCategoriesByAccount, GetUniqueSubcategoriesByAccount
+from src.queries.opqueries import GetUniqueCategoriesQuery, GetUniqueSubcategoriesQuery
 
 from billeUI import UISPATH, operationscreen, animatedlabel
 
@@ -86,23 +86,23 @@ class ReadjustmentScreen(QMainWindow):
         """
         Gets all existing categories from a given account to be used as recomendation
         """
-        categories = GetUniqueCategoriesByAccount(user_id=self.widget.user_object.user_id).execute()
-        # transform list of tuples [(val1, ), (val2, ), ..., (valN, )] to list [val1, val2, ..., valN]
-        categories = [cat[0] for cat in categories]
-
+        try:
+            categories = GetUniqueCategoriesQuery(user_id=self.widget.user_object.user_id).execute()
+        except Exception:
+            categories = []
         return categories
 
     def get_list_of_subcategories_from_db(self, category: str = None) -> list:
         """
         Gets all existing categories from a given account to be used as recomendation
         """
-        subcategories = GetUniqueSubcategoriesByAccount(
-            user_id=self.widget.user_object.user_id,
-            category=category,
-        ).execute()
-        # transform list of tuples [(val1, ), (val2, ), ..., (valN, )] to list [val1, val2, ..., valN]
-        subcategories = [subcat[0] for subcat in subcategories]
-
+        try:
+            subcategories = GetUniqueSubcategoriesQuery(
+                user_id=self.widget.user_object.user_id,
+                category=category,
+            ).execute()
+        except Exception:
+            subcategories = []
         return subcategories
 
     def set_categories_completer(self) -> None:
