@@ -61,7 +61,7 @@ class AccountDetailsDialog(QDialog):
         currency_label = QLabel(f"<b>Currency:</b> {self.account.account_currency or 'N/A'}")
         layout.addWidget(currency_label)
         # Tags
-        tags_text = self.account.tags or "None"
+        tags_text = ",".join(self.account.tags) if self.account.tags else "None"
         tags_label = QLabel(f"<b>Tags:</b> {tags_text}")
         layout.addWidget(tags_label)
         # Created At

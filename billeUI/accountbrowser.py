@@ -35,32 +35,32 @@ from billeUI import UISPATH, ICONSPATH
 from billeUI.accountdetailsdialog import AccountDetailsDialog
 
 
-def clean_tags(tags: str) -> str:
+def clean_tags(tags: str) -> tuple | None:
     """
     Clean up tag string by removing empty segments and extra spaces.
-    
+
     Args:
         tags: Raw tag string (e.g., "hi,,yes, , no")
-        
+
     Returns:
-        Cleaned tag string (e.g., "hi,yes,no")
-        
+        Cleaned tag tuple (e.g., ("hi", "yes", "no")) or None if empty
+
     Examples:
-        "hi,,yes, , no" -> "hi,yes,no"
-        "  tag1  ,  tag2  " -> "tag1,tag2"
-        "" -> ""
-        "single" -> "single"
+        "hi,,yes, , no" -> ("hi", "yes", "no")
+        "  tag1  ,  tag2  " -> ("tag1", "tag2")
+        "" -> None
+        "single" -> ("single",)
     """
     if not tags:
-        return ()
-    
+        return None
+
     # Split by comma and strip whitespace from each segment
     segments = [tag.strip() for tag in tags.split(",")]
-    
+
     # Filter out empty segments
     clean_segments = tuple([tag for tag in segments if tag])
-    
-    return clean_segments
+
+    return clean_segments if clean_segments else None
 
 
 class AccountRow(QWidget):
@@ -174,35 +174,39 @@ class AccountRow(QWidget):
 
     def show_qlabel(self) -> None:
         """Resets the label with the new values"""
-        self.new_acc_name = self.name_line_edit.text().replace(" ","")
+        self.new_acc_name = self.name_line_edit.text().replace(" ", "")
         tags_input = self.tags_line_edit.text()
-        
+
         # Clean up tags (remove empty segments and extra spaces)
         cleaned_tags = clean_tags(tags_input)
-        
+
         # Convert empty tags to None to satisfy validation
         self.new_acc_tags = cleaned_tags if cleaned_tags else None
-        
+
         # Update name label
         self.name_label.setText(self.new_acc_name)
-        
+
         # Update tags label
-        tags_display = self.new_acc_tags if self.new_acc_tags else "No tags"
+        tags_display = ",".join(self.new_acc_tags) if self.new_acc_tags else "No tags"
         self.tags_label.setText(f"<i>Tags: {tags_display}</i>")
-        
+
         # Check if anything changed
         name_changed = self.new_acc_name != self.account_name
         tags_changed = self.new_acc_tags != self.account_tags
-        
+
         if name_changed or tags_changed:
             self.name_label.setStyleSheet("color: orange; font-weight: bold; font-style: italic;")
             self.tags_label.setStyleSheet("color: orange; font-style: italic; font-size: 9pt;")
-            self.account_modified.emit(self.account_id, self.new_acc_name, self.new_acc_tags, True)
+            # Convert None to empty tuple for signal emission
+            tags_to_emit = self.new_acc_tags if self.new_acc_tags is not None else ()
+            self.account_modified.emit(self.account_id, self.new_acc_name, tags_to_emit, True)
         else:
             self.name_label.setStyleSheet("color: black; font-weight: bold;")
             self.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
-            self.account_modified.emit(self.account_id, self.account_name, self.account_tags, False)
-        
+            # Convert None to empty tuple for signal emission
+            tags_to_emit = self.account_tags if self.account_tags is not None else ()
+            self.account_modified.emit(self.account_id, self.account_name, tags_to_emit, False)
+
         self.name_line_edit.hide()
         self.tags_line_edit.hide()
         self.name_label.show()
@@ -247,7 +251,7 @@ class AccountRow(QWidget):
         self.account_name = self.account.account_name
         self.account_tags = self.account.tags
         self.name_label.setText(f"<b>{self.account_name}</b>")
-        tags_display = self.account_tags if self.account_tags else "No tags"
+        tags_display = ",".join(self.account_tags) if self.account_tags else "No tags"
         self.tags_label.setText(f"<i>Tags: {tags_display}</i>")
 
     def mouseDoubleClickEvent(self, event) -> None:
@@ -293,12 +297,9 @@ class AccountBrowser(QMainWindow):
             try:
                 # Convert empty string to None to satisfy validation
                 tags_to_save = row.new_acc_tags if row.new_acc_tags else None
-                
+
                 EditAccountCommand(
-                    user_id=self.user_id, 
-                    account_id=row.account_id, 
-                    account_name=row.new_acc_name,
-                    tags=tags_to_save
+                    user_id=self.user_id, account_id=row.account_id, account_name=row.new_acc_name, tags=tags_to_save
                 ).execute()
                 row.name_label.setStyleSheet("color: black; font-weight: bold;")
                 row.tags_label.setStyleSheet("color: gray; font-size: 9pt;")

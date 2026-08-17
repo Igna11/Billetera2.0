@@ -2,7 +2,6 @@
 Tests for AccountDetailsDialog and AccountRow tag editing functionality.
 """
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
 from PyQt5.QtCore import Qt
@@ -11,7 +10,6 @@ import unittest.mock as mock
 from billeUI.accountdetailsdialog import AccountDetailsDialog
 from billeUI.accountbrowser import AccountRow, clean_tags
 from src.models.accmodel import Accounts
-from src.errorhandler.accountserrors import InvalidTagsError
 
 
 class TestTagsValidation:
@@ -19,34 +17,34 @@ class TestTagsValidation:
 
     def test_clean_tags_removes_empty_segments(self):
         """Test that clean_tags removes empty segments."""
-        assert clean_tags("hi,,yes, , no") == "hi,yes,no"
-        assert clean_tags("tag1,,tag2,,tag3") == "tag1,tag2,tag3"
+        assert clean_tags("hi,,yes, , no") == ("hi", "yes", "no")
+        assert clean_tags("tag1,,tag2,,tag3") == ("tag1", "tag2", "tag3")
 
     def test_clean_tags_removes_extra_spaces(self):
         """Test that clean_tags removes extra spaces."""
-        assert clean_tags("  tag1  ,  tag2  ") == "tag1,tag2"
-        assert clean_tags(" tag1 , tag2 , tag3 ") == "tag1,tag2,tag3"
+        assert clean_tags("  tag1  ,  tag2  ") == ("tag1", "tag2")
+        assert clean_tags(" tag1 , tag2 , tag3 ") == ("tag1", "tag2", "tag3")
 
     def test_clean_tags_handles_combined_issues(self):
         """Test that clean_tags handles both empty segments and spaces."""
-        assert clean_tags("hi,,yes, , no") == "hi,yes,no"
-        assert clean_tags("  tag1  ,,  tag2  ,  , tag3  ") == "tag1,tag2,tag3"
+        assert clean_tags("hi,,yes, , no") == ("hi", "yes", "no")
+        assert clean_tags("  tag1  ,,  tag2  ,  , tag3  ") == ("tag1", "tag2", "tag3")
 
     def test_clean_tags_handles_empty_input(self):
         """Test that clean_tags handles empty input."""
-        assert clean_tags("") == ""
-        assert clean_tags("   ") == ""
-        assert clean_tags(", , ,") == ""
+        assert clean_tags("") is None
+        assert clean_tags("   ") is None
+        assert clean_tags(", , ,") is None
 
     def test_clean_tags_handles_single_tag(self):
         """Test that clean_tags handles single tag."""
-        assert clean_tags("single") == "single"
-        assert clean_tags("  single  ") == "single"
+        assert clean_tags("single") == ("single",)
+        assert clean_tags("  single  ") == ("single",)
 
     def test_clean_tags_handles_already_clean_tags(self):
         """Test that clean_tags doesn't modify already clean tags."""
-        assert clean_tags("tag1,tag2,tag3") == "tag1,tag2,tag3"
-        assert clean_tags("personal,savings") == "personal,savings"
+        assert clean_tags("tag1,tag2,tag3") == ("tag1", "tag2", "tag3")
+        assert clean_tags("personal,savings") == ("personal", "savings")
 
     def test_account_model_accepts_none_tags(self, qapp):
         """Test that Accounts model accepts None as tags."""
@@ -61,22 +59,14 @@ class TestTagsValidation:
     def test_account_model_accepts_non_empty_tags(self, qapp):
         """Test that Accounts model accepts non-empty tags."""
         account = Accounts(
-            user_id="test", account_name="TestAccount", account_currency="USD", tags="personal,savings"
+            user_id="test", account_name="TestAccount", account_currency="USD", tags=("personal", "savings")
         )
-        assert account.tags == "personal,savings"
+        assert account.tags == ("personal", "savings")
 
-    def test_account_model_rejects_empty_tags(self, qapp):
-        """Test that Accounts model rejects empty string tags."""
-        with pytest.raises(InvalidTagsError):
-            Accounts(user_id="test", account_name="TestAccount", account_currency="USD", tags="")
-
-    def test_account_model_rejects_empty_tags_on_assignment(self, qapp):
-        """Test that Accounts model rejects empty string tags on assignment."""
-        account = Accounts(
-            user_id="test", account_name="TestAccount", account_currency="USD", tags="initial"
-        )
-        with pytest.raises(InvalidTagsError):
-            account.tags = ""
+    def test_account_model_accepts_empty_tuple_tags(self, qapp):
+        """Test that Accounts model accepts empty tuple tags."""
+        account = Accounts(user_id="test", account_name="TestAccount", account_currency="USD", tags=())
+        assert account.tags == ()
 
     def test_ui_converts_empty_tags_to_none(self, qapp, mock_account):
         """Test that UI converts empty tags to None."""
@@ -100,7 +90,7 @@ class TestTagsValidation:
         row.show_qlabel()
 
         # Should clean the tags
-        assert row.new_acc_tags == "hi,yes,no"
+        assert row.new_acc_tags == ("hi", "yes", "no")
         assert "hi,yes,no" in row.tags_label.text()
         row.close()
 
@@ -130,7 +120,7 @@ class TestAccountDetailsDialog:
             account_name="TestAccount",
             account_currency="USD",
             account_total=Decimal("2500.50"),
-            tags="personal,savings",
+            tags=("personal", "savings"),
             created_at=datetime.now(),
             updated_at=datetime.now(),
             is_active=True,
@@ -227,7 +217,7 @@ class TestAccountRowTagEditing:
             account_name="TestAccount",
             account_currency="USD",
             account_total=Decimal("1000.00"),
-            tags="personal,savings",
+            tags=("personal", "savings"),
         )
         row = AccountRow(test_account)
         row.show()
@@ -270,6 +260,7 @@ class TestAccountRowTagEditing:
 
         # Track signal emissions
         signal_emissions = []
+
         def slot(acc_id, name, tags, modified):
             signal_emissions.append((acc_id, name, tags, modified))
 
@@ -281,7 +272,7 @@ class TestAccountRowTagEditing:
         # Check that signal was emitted with modified=True
         assert len(signal_emissions) > 0
         assert signal_emissions[-1][3] == True  # modified should be True
-        assert signal_emissions[-1][2] == "new,tags"  # tags should be updated
+        assert signal_emissions[-1][2] == ("new", "tags")  # tags should be updated
 
         row.close()
 
@@ -302,6 +293,7 @@ class TestAccountRowTagEditing:
 
         # Track signal emissions
         signal_emissions = []
+
         def slot(acc_id, name, tags, modified):
             signal_emissions.append((acc_id, name, tags, modified))
 
@@ -315,7 +307,7 @@ class TestAccountRowTagEditing:
         assert len(signal_emissions) > 0
         assert signal_emissions[-1][3] == True  # modified should be True
         assert signal_emissions[-1][1] == "NewName"
-        assert signal_emissions[-1][2] == "new,tags"
+        assert signal_emissions[-1][2] == ("new", "tags")
 
         row.close()
 
@@ -326,6 +318,7 @@ class TestAccountRowTagEditing:
 
         # Track signal emissions
         signal_emissions = []
+
         def slot(acc_id, name, tags, modified):
             signal_emissions.append((acc_id, name, tags, modified))
 
@@ -333,7 +326,7 @@ class TestAccountRowTagEditing:
         row.enable_edit_mode()
         # Don't change anything (keep same values)
         row.name_line_edit.setText(row.account_name)
-        row.tags_line_edit.setText(row.account_tags if row.account_tags else "")
+        row.tags_line_edit.setText(",".join(row.account_tags) if row.account_tags else "")
         row.show_qlabel()
 
         # Check that signal was emitted with modified=False
