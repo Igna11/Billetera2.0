@@ -35,9 +35,37 @@ from billeUI import UISPATH, ICONSPATH
 from billeUI.accountdetailsdialog import AccountDetailsDialog
 
 
+def clean_tags(tags: str) -> str:
+    """
+    Clean up tag string by removing empty segments and extra spaces.
+    
+    Args:
+        tags: Raw tag string (e.g., "hi,,yes, , no")
+        
+    Returns:
+        Cleaned tag string (e.g., "hi,yes,no")
+        
+    Examples:
+        "hi,,yes, , no" -> "hi,yes,no"
+        "  tag1  ,  tag2  " -> "tag1,tag2"
+        "" -> ""
+        "single" -> "single"
+    """
+    if not tags:
+        return ()
+    
+    # Split by comma and strip whitespace from each segment
+    segments = [tag.strip() for tag in tags.split(",")]
+    
+    # Filter out empty segments
+    clean_segments = tuple([tag for tag in segments if tag])
+    
+    return clean_segments
+
+
 class AccountRow(QWidget):
 
-    account_modified = pyqtSignal(str, str, str, bool)
+    account_modified = pyqtSignal(str, str, tuple, bool)
 
     def __init__(self, account: Accounts, parent=None):
         super().__init__(parent)
@@ -47,7 +75,7 @@ class AccountRow(QWidget):
         self.account_name = account.account_name
         self.account_tags = account.tags
         self.new_acc_name = ""
-        self.new_acc_tags = ""
+        self.new_acc_tags = None
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_Hover, True)
         self.frame = QFrame(self)
@@ -79,11 +107,11 @@ class AccountRow(QWidget):
         self.balance_label.setFont(font)
 
         # tags_line
-        tags_text = self.account_tags if self.account_tags else "No tags"
+        tags_text = ",".join(self.account_tags) if self.account_tags else "No tags"
         self.tags_label = QLabel(f"<i>Tags: {tags_text}</i>")
         self.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
         self.tags_line_edit = QLineEdit(self)
-        self.tags_line_edit.setText(self.account_tags if self.account_tags else "")
+        self.tags_line_edit.setText(",".join(self.account_tags) if self.account_tags else "")
         self.tags_line_edit.setPlaceholderText("Enter tags (comma-separated)")
         self.tags_line_edit.hide()
         self.tags_line_edit.editingFinished.connect(self.show_qlabel)
@@ -147,10 +175,13 @@ class AccountRow(QWidget):
     def show_qlabel(self) -> None:
         """Resets the label with the new values"""
         self.new_acc_name = self.name_line_edit.text().replace(" ","")
-        tags_input = self.tags_line_edit.text().replace(" ","")
+        tags_input = self.tags_line_edit.text()
+        
+        # Clean up tags (remove empty segments and extra spaces)
+        cleaned_tags = clean_tags(tags_input)
         
         # Convert empty tags to None to satisfy validation
-        self.new_acc_tags = tags_input if tags_input else None
+        self.new_acc_tags = cleaned_tags if cleaned_tags else None
         
         # Update name label
         self.name_label.setText(self.new_acc_name)
@@ -260,16 +291,19 @@ class AccountBrowser(QMainWindow):
         row_to_be_saved = [row for row in self.acc_row_list if row.account_id in self.account_changed]
         for row in row_to_be_saved:
             try:
+                # Convert empty string to None to satisfy validation
+                tags_to_save = row.new_acc_tags if row.new_acc_tags else None
+                
                 EditAccountCommand(
                     user_id=self.user_id, 
                     account_id=row.account_id, 
                     account_name=row.new_acc_name,
-                    tags=row.new_acc_tags if row.new_acc_tags else None
+                    tags=tags_to_save
                 ).execute()
                 row.name_label.setStyleSheet("color: black; font-weight: bold;")
                 row.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
                 row.account_name = row.new_acc_name
-                row.account_tags = row.new_acc_tags
+                row.account_tags = tags_to_save
                 animatedlabel.AnimatedLabel("Changes saved! ✅", message_type="success").display()
                 self.save_changes_button.setEnabled(False)
             except sqlite3.OperationalError:

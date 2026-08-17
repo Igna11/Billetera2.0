@@ -41,13 +41,13 @@ class OperationHandler(Operations):
         if amount < 0:
             self.amount = abs(amount)
             self.operation_type = "expense"
-            self.tags = "Readjustment,Negative"
+            self.tags = ("Readjustment", "Negative")
         elif amount == 0:
             pass
         elif amount > 0:
             self.amount = amount
             self.operation_type = "income"
-            self.tags = "Readjustment,Positive"
+            self.tags = ("Readjustment", "Positive")
         return []
 
     def _calculate_cumulatives(

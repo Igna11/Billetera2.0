@@ -4,10 +4,11 @@ billeterapp 2.0 - Junio 2025                                                    
 This module handles the data stored in the operation tables.
 """
 
-from typing import List, Dict, Literal, ClassVar, Optional
 from decimal import Decimal
 from datetime import datetime
+from calendar import monthrange
 from collections import defaultdict
+from typing import List, Dict, Literal, ClassVar, Optional
 
 from src.models.opmodel import Operations
 
@@ -256,8 +257,6 @@ class AccountDataAnalyzer(BaseModel):
             e.g., [{'day': 1, 'income': 100.0, 'expense': 50.0}, ...]
                  or [{'day': '2026-08-01', 'income': 100.0, 'expense': 50.0}, ...]
         """
-        from calendar import monthrange
-
         # Get all operations for the time period
         operations = ListOperationsQuery(user_id=user_id).execute(
             from_dt=from_dt, to_dt=to_dt, currency=currency, is_active=is_active, order="ASC"

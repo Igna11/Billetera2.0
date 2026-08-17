@@ -22,7 +22,7 @@ def initialize_accounts_table(user_id: str, database_name: str = "accounts_datab
               account_unique_name TEXT GENERATED ALWAYS AS (account_name || '_' || account_currency) VIRTUAL UNIQUE,
               account_total DECIMAL,
               is_active BOOLEAN NOT NULL CHECK (is_active IN (0, 1)),
-              tags TEXT,
+              tags TUPLE,
               created_at DATETIME,
               updated_at DATETIME
             )"""

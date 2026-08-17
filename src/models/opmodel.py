@@ -9,10 +9,10 @@ This module is intended to be used by the module commands and not directly.
 
 from decimal import Decimal
 from datetime import datetime, UTC
-from typing import Optional, Literal, Any
+from typing import Optional, Literal, Tuple, Any
 
 from ulid import ULID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_extra_types.currency_code import ISO4217
 
 
@@ -30,12 +30,20 @@ class Operations(BaseModel, validate_assignment=True):
     category: Optional[str] = None
     subcategory: Optional[str] = None
     description: Optional[str] = None
-    tags: Optional[str] = None
+    tags: Optional[Tuple[str, ...]] = None
     group_id: Optional[str] = None
     detail_id: Optional[str] = None
     transfer_id: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    @field_validator("tags")
+    @classmethod
+    def __tag_sanitizer(cls, tags: Tuple[str, ...]) -> Tuple[str, ...]:
+        """Removes leading and trailing spaces and empty tags from the tuple"""
+        if tags is None:
+            return None
+        return tuple([tag.strip() for tag in tags if tag.strip()])
 
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump()

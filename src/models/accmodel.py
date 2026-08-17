@@ -13,7 +13,7 @@ This module is intended to be used by the module commands and not directly.
 import re
 from decimal import Decimal
 from datetime import datetime
-from typing import Optional, Any
+from typing import Optional, Tuple, Any
 
 from ulid import ULID
 from pydantic import BaseModel, Field, field_validator
@@ -29,7 +29,7 @@ class Accounts(BaseModel, validate_assignment=True):
     account_currency: Optional[ISO4217] = None
     account_total: Optional[Decimal] = Field(ge=0, default=None)
     is_active: bool = True
-    tags: Optional[str] = None
+    tags: Optional[Tuple[str, ...]] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -49,6 +49,14 @@ class Accounts(BaseModel, validate_assignment=True):
         if not re.match(r"^[a-zA-Z0-9_]*$", acc_name):
             raise InvalidAccountNameError
         return acc_name
+
+    @field_validator("tags")
+    @classmethod
+    def __tag_sanitizer(cls, tags: Tuple[str, ...]) -> Tuple[str, ...]:
+        """Removes leading and trailing spaces and empty tags from the tuple"""
+        if tags is None:
+            return None
+        return tuple([tag.strip() for tag in tags if tag.strip()])
 
     def to_dict(self) -> dict[str, Any]:
         return self.model_dump()

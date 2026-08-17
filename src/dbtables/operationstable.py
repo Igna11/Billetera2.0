@@ -24,7 +24,7 @@ def initialize_operations_table(user_id: str, database_name: str = "accounts_dat
               category TEXT,
               subcategory TEXT,
               description TEXT,
-              tags TEXT,
+              tags TUPLE,
               group_id TEXT,
               detail_id TEXT,
               transfer_id TEXT,

@@ -30,13 +30,26 @@ def register_sqlite_adapters() -> None:
     Converters registered:
     - DECIMAL: Converts string back to Decimal
     """
-    # Custom sqlite3 adapter for date and datetime
+    # Custom sqlite3 adapters for date and datetime
     sqlite3.register_adapter(date, lambda val: val.isoformat())
     sqlite3.register_adapter(datetime, lambda val: val.isoformat())
+    # Custom sqlite3 converters for date and datetime
+    sqlite3.register_converter(
+        "DATE", lambda val: datetime.fromisoformat(val.decode() if isinstance(val, bytes) else val)
+    )
+    sqlite3.register_converter(
+        "DATETIME", lambda val: datetime.fromisoformat(val.decode() if isinstance(val, bytes) else val)
+    )
+
     # Custom sqlite3 adapter for decimals
     sqlite3.register_adapter(Decimal, lambda val: str(val))
     # Custom sqlite3 converter for decimals, if val if bytes will decode them first, if not proceeds
     sqlite3.register_converter("DECIMAL", lambda val: Decimal(val.decode() if isinstance(val, bytes) else val))
+
+    # Custom sqlite3 adapter for tuples converting them to a string with commas to store in the db
+    sqlite3.register_adapter(tuple, lambda val: ",".join(val))
+    # Custom sqlite3 converter for strings with commas to convert them as tuples
+    sqlite3.register_converter("TUPLE", lambda val: tuple([v for v in val.split(b",") if v.strip()]))
 
 
 # Register adapters when module is imported
@@ -61,7 +74,7 @@ def get_connection(
         >>> conn = get_connection("database.db")
         >>> conn = get_connection("database.db", row_factory=sqlite3.Row)
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
 
     if enforce_foreign_keys:
         conn.execute("PRAGMA foreign_keys = ON;")

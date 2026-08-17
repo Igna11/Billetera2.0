@@ -9,8 +9,100 @@ from PyQt5.QtCore import Qt
 import unittest.mock as mock
 
 from billeUI.accountdetailsdialog import AccountDetailsDialog
-from billeUI.accountbrowser import AccountRow
+from billeUI.accountbrowser import AccountRow, clean_tags
 from src.models.accmodel import Accounts
+from src.errorhandler.accountserrors import InvalidTagsError
+
+
+class TestTagsValidation:
+    """Test suite for tags validation functionality."""
+
+    def test_clean_tags_removes_empty_segments(self):
+        """Test that clean_tags removes empty segments."""
+        assert clean_tags("hi,,yes, , no") == "hi,yes,no"
+        assert clean_tags("tag1,,tag2,,tag3") == "tag1,tag2,tag3"
+
+    def test_clean_tags_removes_extra_spaces(self):
+        """Test that clean_tags removes extra spaces."""
+        assert clean_tags("  tag1  ,  tag2  ") == "tag1,tag2"
+        assert clean_tags(" tag1 , tag2 , tag3 ") == "tag1,tag2,tag3"
+
+    def test_clean_tags_handles_combined_issues(self):
+        """Test that clean_tags handles both empty segments and spaces."""
+        assert clean_tags("hi,,yes, , no") == "hi,yes,no"
+        assert clean_tags("  tag1  ,,  tag2  ,  , tag3  ") == "tag1,tag2,tag3"
+
+    def test_clean_tags_handles_empty_input(self):
+        """Test that clean_tags handles empty input."""
+        assert clean_tags("") == ""
+        assert clean_tags("   ") == ""
+        assert clean_tags(", , ,") == ""
+
+    def test_clean_tags_handles_single_tag(self):
+        """Test that clean_tags handles single tag."""
+        assert clean_tags("single") == "single"
+        assert clean_tags("  single  ") == "single"
+
+    def test_clean_tags_handles_already_clean_tags(self):
+        """Test that clean_tags doesn't modify already clean tags."""
+        assert clean_tags("tag1,tag2,tag3") == "tag1,tag2,tag3"
+        assert clean_tags("personal,savings") == "personal,savings"
+
+    def test_account_model_accepts_none_tags(self, qapp):
+        """Test that Accounts model accepts None as tags."""
+        account = Accounts(
+            user_id="test",
+            account_name="TestAccount",
+            account_currency="USD",
+            tags=None,
+        )
+        assert account.tags is None
+
+    def test_account_model_accepts_non_empty_tags(self, qapp):
+        """Test that Accounts model accepts non-empty tags."""
+        account = Accounts(
+            user_id="test", account_name="TestAccount", account_currency="USD", tags="personal,savings"
+        )
+        assert account.tags == "personal,savings"
+
+    def test_account_model_rejects_empty_tags(self, qapp):
+        """Test that Accounts model rejects empty string tags."""
+        with pytest.raises(InvalidTagsError):
+            Accounts(user_id="test", account_name="TestAccount", account_currency="USD", tags="")
+
+    def test_account_model_rejects_empty_tags_on_assignment(self, qapp):
+        """Test that Accounts model rejects empty string tags on assignment."""
+        account = Accounts(
+            user_id="test", account_name="TestAccount", account_currency="USD", tags="initial"
+        )
+        with pytest.raises(InvalidTagsError):
+            account.tags = ""
+
+    def test_ui_converts_empty_tags_to_none(self, qapp, mock_account):
+        """Test that UI converts empty tags to None."""
+        row = AccountRow(mock_account)
+        row.show()
+        row.enable_edit_mode()
+        row.tags_line_edit.setText("")  # Empty input
+        row.show_qlabel()
+
+        # Should convert empty string to None
+        assert row.new_acc_tags is None
+        assert "No tags" in row.tags_label.text()
+        row.close()
+
+    def test_ui_cleans_malformed_tags(self, qapp, mock_account):
+        """Test that UI cleans malformed tag input."""
+        row = AccountRow(mock_account)
+        row.show()
+        row.enable_edit_mode()
+        row.tags_line_edit.setText("hi,,yes, , no")  # Malformed input
+        row.show_qlabel()
+
+        # Should clean the tags
+        assert row.new_acc_tags == "hi,yes,no"
+        assert "hi,yes,no" in row.tags_label.text()
+        row.close()
 
 
 class TestAccountDetailsDialog:
@@ -239,7 +331,9 @@ class TestAccountRowTagEditing:
 
         row.account_modified.connect(slot)
         row.enable_edit_mode()
-        # Don't change anything
+        # Don't change anything (keep same values)
+        row.name_line_edit.setText(row.account_name)
+        row.tags_line_edit.setText(row.account_tags if row.account_tags else "")
         row.show_qlabel()
 
         # Check that signal was emitted with modified=False
