@@ -33,6 +33,7 @@ from src.commands.acccommands import EditAccountCommand, DeleteAccountCommand
 from billeUI import operationscreen, currency_format, animatedlabel
 from billeUI import UISPATH, ICONSPATH
 from billeUI.accountdetailsdialog import AccountDetailsDialog
+from billeUI.taglabel import TagContainer
 
 
 def clean_tags(tags: str) -> tuple | None:
@@ -107,9 +108,7 @@ class AccountRow(QWidget):
         self.balance_label.setFont(font)
 
         # tags_line
-        tags_text = ",".join(self.account_tags) if self.account_tags else "No tags"
-        self.tags_label = QLabel(f"<i>Tags: {tags_text}</i>")
-        self.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
+        self.tags_container = TagContainer(self.account_tags, show_close_buttons=False)
         self.tags_line_edit = QLineEdit(self)
         self.tags_line_edit.setText(",".join(self.account_tags) if self.account_tags else "")
         self.tags_line_edit.setPlaceholderText("Enter tags (comma-separated)")
@@ -138,12 +137,12 @@ class AccountRow(QWidget):
         self.enable_disable_btn.clicked.connect(self.enable_n_disable_account)
 
         # Layouts
-        text_layout = QVBoxLayout()
-        text_layout.addWidget(self.name_label)
-        text_layout.addWidget(self.name_line_edit)
-        text_layout.addWidget(self.tags_label)
-        text_layout.addWidget(self.tags_line_edit)
-        text_layout.addWidget(self.balance_label)
+        self.text_layout = QVBoxLayout()
+        self.text_layout.addWidget(self.name_label)
+        self.text_layout.addWidget(self.name_line_edit)
+        self.text_layout.addWidget(self.tags_container)
+        self.text_layout.addWidget(self.tags_line_edit)
+        self.text_layout.addWidget(self.balance_label)
 
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self.delete_btn)
@@ -151,7 +150,7 @@ class AccountRow(QWidget):
         btn_layout.addWidget(self.enable_disable_btn)
 
         inner_layout = QHBoxLayout()
-        inner_layout.addLayout(text_layout)
+        inner_layout.addLayout(self.text_layout)
         inner_layout.addStretch()
         inner_layout.addLayout(btn_layout)
         inner_layout.setContentsMargins(5, 3, 5, 3)
@@ -167,7 +166,7 @@ class AccountRow(QWidget):
         """Enables the edition of the account name and tags"""
         self.name_label.hide()
         self.name_line_edit.show()
-        self.tags_label.hide()
+        self.tags_container.hide()
         self.tags_line_edit.show()
         self.name_line_edit.setFocus()
         self.name_line_edit.selectAll()
@@ -186,9 +185,11 @@ class AccountRow(QWidget):
         # Update name label
         self.name_label.setText(self.new_acc_name)
 
-        # Update tags label
-        tags_display = ",".join(self.new_acc_tags) if self.new_acc_tags else "No tags"
-        self.tags_label.setText(f"<i>Tags: {tags_display}</i>")
+        # Update tags container by replacing it with a new one
+        old_tags_index = self.text_layout.indexOf(self.tags_container)
+        self.tags_container.deleteLater()
+        self.tags_container = TagContainer(self.new_acc_tags, show_close_buttons=False)
+        self.text_layout.insertWidget(old_tags_index, self.tags_container)
 
         # Check if anything changed
         name_changed = self.new_acc_name != self.account_name
@@ -196,13 +197,11 @@ class AccountRow(QWidget):
 
         if name_changed or tags_changed:
             self.name_label.setStyleSheet("color: orange; font-weight: bold; font-style: italic;")
-            self.tags_label.setStyleSheet("color: orange; font-style: italic; font-size: 9pt;")
             # Convert None to empty tuple for signal emission
             tags_to_emit = self.new_acc_tags if self.new_acc_tags is not None else ()
             self.account_modified.emit(self.account_id, self.new_acc_name, tags_to_emit, True)
         else:
             self.name_label.setStyleSheet("color: black; font-weight: bold;")
-            self.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
             # Convert None to empty tuple for signal emission
             tags_to_emit = self.account_tags if self.account_tags is not None else ()
             self.account_modified.emit(self.account_id, self.account_name, tags_to_emit, False)
@@ -210,7 +209,7 @@ class AccountRow(QWidget):
         self.name_line_edit.hide()
         self.tags_line_edit.hide()
         self.name_label.show()
-        self.tags_label.show()
+        self.tags_container.show()
 
     def delete_account(self) -> None:
         confirmation_message = """
@@ -251,8 +250,12 @@ class AccountRow(QWidget):
         self.account_name = self.account.account_name
         self.account_tags = self.account.tags
         self.name_label.setText(f"<b>{self.account_name}</b>")
-        tags_display = ",".join(self.account_tags) if self.account_tags else "No tags"
-        self.tags_label.setText(f"<i>Tags: {tags_display}</i>")
+
+        # Update tags container
+        old_tags_index = self.text_layout.indexOf(self.tags_container)
+        self.tags_container.deleteLater()
+        self.tags_container = TagContainer(self.account_tags, show_close_buttons=False)
+        self.text_layout.insertWidget(old_tags_index, self.tags_container)
 
     def mouseDoubleClickEvent(self, event) -> None:
         """Open account details dialog on double click."""
@@ -302,9 +305,15 @@ class AccountBrowser(QMainWindow):
                     user_id=self.user_id, account_id=row.account_id, account_name=row.new_acc_name, tags=tags_to_save
                 ).execute()
                 row.name_label.setStyleSheet("color: black; font-weight: bold;")
-                row.tags_label.setStyleSheet("color: gray; font-size: 9pt;")
                 row.account_name = row.new_acc_name
                 row.account_tags = tags_to_save
+
+                # Refresh tags container after saving
+                old_tags_index = row.text_layout.indexOf(row.tags_container)
+                row.tags_container.deleteLater()
+                row.tags_container = TagContainer(row.account_tags, show_close_buttons=False)
+                row.text_layout.insertWidget(old_tags_index, row.tags_container)
+
                 animatedlabel.AnimatedLabel("Changes saved! ✅", message_type="success").display()
                 self.save_changes_button.setEnabled(False)
             except sqlite3.OperationalError:

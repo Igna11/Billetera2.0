@@ -5,6 +5,7 @@ Tests for AccountDetailsDialog and AccountRow tag editing functionality.
 from datetime import datetime
 from decimal import Decimal
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QLabel
 import unittest.mock as mock
 
 from billeUI.accountdetailsdialog import AccountDetailsDialog
@@ -78,7 +79,7 @@ class TestTagsValidation:
 
         # Should convert empty string to None
         assert row.new_acc_tags is None
-        assert "No tags" in row.tags_label.text()
+        assert "No tags" in row.tags_container.findChild(QLabel).text()
         row.close()
 
     def test_ui_cleans_malformed_tags(self, qapp, mock_account):
@@ -91,7 +92,12 @@ class TestTagsValidation:
 
         # Should clean the tags
         assert row.new_acc_tags == ("hi", "yes", "no")
-        assert "hi,yes,no" in row.tags_label.text()
+        # Check that tags are displayed in the container
+        tag_labels = row.tags_container.findChildren(QLabel)
+        tag_texts = [label.text() for label in tag_labels]
+        assert "hi" in tag_texts
+        assert "yes" in tag_texts
+        assert "no" in tag_texts
         row.close()
 
 
@@ -206,7 +212,7 @@ class TestAccountRowTagEditing:
         """Test that AccountRow displays tags label."""
         row = AccountRow(mock_account)
         row.show()
-        assert hasattr(row, "tags_label")
+        assert hasattr(row, "tags_container")
         assert hasattr(row, "tags_line_edit")
         row.close()
 
@@ -221,14 +227,18 @@ class TestAccountRowTagEditing:
         )
         row = AccountRow(test_account)
         row.show()
-        assert "personal,savings" in row.tags_label.text()
+        # Check that tags are displayed in the container
+        tag_labels = row.tags_container.findChildren(QLabel)
+        tag_texts = [label.text() for label in tag_labels]
+        assert "personal" in tag_texts
+        assert "savings" in tag_texts
         row.close()
 
     def test_account_row_tags_display_without_tags(self, qapp, mock_account):
         """Test that 'No tags' is displayed when account has no tags."""
         row = AccountRow(mock_account)
         row.show()
-        assert "No tags" in row.tags_label.text()
+        assert "No tags" in row.tags_container.findChild(QLabel).text()
         row.close()
 
     def test_edit_mode_shows_tags_field(self, qapp, mock_account):
@@ -238,7 +248,7 @@ class TestAccountRowTagEditing:
         row.enable_edit_mode()
         # Check that the field is shown (not hidden)
         assert not row.tags_line_edit.isHidden()
-        assert row.tags_label.isHidden()
+        assert row.tags_container.isHidden()
         row.close()
 
     def test_edit_mode_hides_tags_field_on_save(self, qapp, mock_account):
@@ -250,7 +260,7 @@ class TestAccountRowTagEditing:
         row.show_qlabel()
         # Check that the field is hidden
         assert row.tags_line_edit.isHidden()
-        assert not row.tags_label.isHidden()
+        assert not row.tags_container.isHidden()
         row.close()
 
     def test_tag_changes_emit_modified_signal(self, qapp, mock_account):
@@ -283,7 +293,11 @@ class TestAccountRowTagEditing:
         row.enable_edit_mode()
         row.tags_line_edit.setText("personal,business")
         row.show_qlabel()
-        assert "personal,business" in row.tags_label.text()
+        # Check that tags are displayed in the container
+        tag_labels = row.tags_container.findChildren(QLabel)
+        tag_texts = [label.text() for label in tag_labels]
+        assert "personal" in tag_texts
+        assert "business" in tag_texts
         row.close()
 
     def test_both_name_and_tags_changes_emit_modified(self, qapp, mock_account):

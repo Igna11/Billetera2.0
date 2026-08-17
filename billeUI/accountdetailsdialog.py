@@ -11,6 +11,7 @@ from PyQt5.QtGui import QFont
 
 from src.models.accmodel import Accounts
 from billeUI import currency_format
+from billeUI.taglabel import TagContainer
 
 
 class AccountDetailsDialog(QDialog):
@@ -61,9 +62,10 @@ class AccountDetailsDialog(QDialog):
         currency_label = QLabel(f"<b>Currency:</b> {self.account.account_currency or 'N/A'}")
         layout.addWidget(currency_label)
         # Tags
-        tags_text = ",".join(self.account.tags) if self.account.tags else "None"
-        tags_label = QLabel(f"<b>Tags:</b> {tags_text}")
+        tags_label = QLabel("<b>Tags:</b>")
         layout.addWidget(tags_label)
+        tags_container = TagContainer(self.account.tags, show_close_buttons=False)
+        layout.addWidget(tags_container)
         # Created At
         created_text = self.account.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.account.created_at else "N/A"
         created_label = QLabel(f"<b>Created At:</b> {created_text}")
