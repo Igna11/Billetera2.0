@@ -283,6 +283,7 @@ class AccountBrowser(QMainWindow):
         self.save_changes_button.clicked.connect(self.save_account_changes)
 
         self.accounts_object = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        self.accounts_object.sort(key=lambda acc: -acc.is_active)  # Sort first the active accounts
 
         self.back_button.clicked.connect(self.back)
 
