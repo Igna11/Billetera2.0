@@ -28,6 +28,7 @@ class GetOperationByIDQuery(Operations):
         op_data = op_db.get_operation_by_id(self.operation_id)
         if not op_data:
             raise OperationNotFoundError
+        print(dict(op_data))
         operation = Operations.from_row(op_data)
         operation.user_id = self.user_id
 

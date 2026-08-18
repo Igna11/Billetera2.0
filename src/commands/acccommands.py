@@ -34,12 +34,16 @@ class EditAccountCommand(Accounts):
         if not acc_db_data:
             raise AccountNotFoundError
 
-        if not self.account_name:
+        if self.account_name is None:
             self.account_name = acc_db_data["account_name"]
-        if not self.account_currency:
+        if self.account_currency is None:
             self.account_currency = acc_db_data["account_currency"]
-        # if self.is_active is None:
-        #    self.is_active = acc_db_data["is_active"]
+        if self.account_total is None:
+            self.account_total = acc_db_data["account_total"]
+        if self.tags is None:
+            self.tags = acc_db_data["tags"]
+        if self.is_active is None:
+            self.is_active = acc_db_data["is_active"]
 
         self.updated_at = datetime.now(UTC)
         acc_db.update_account(self)

@@ -16,11 +16,11 @@ class AccountsDB:
     INSERT_QUERY = """
         INSERT INTO accounts (
           account_id, user_id, account_name, account_currency,
-          is_active, tags, created_at, updated_at
+          account_total, is_active, tags, created_at, updated_at
         )
         VALUES (
           :account_id, :user_id, :account_name, :account_currency,
-          :is_active, :tags, :created_at, :updated_at
+          :account_total, :is_active, :tags, :created_at, :updated_at
         )
     """
     UPDATE_QUERY = """
