@@ -774,6 +774,7 @@ class GroupBrowserWidget(QWidget):
 
         try:
             self.group_object = ListGroupsQuery(user_id=self.widget.user_object.user_id).execute()
+            self.group_object.sort(key=lambda gr: gr.group_name)
             self.all_groups = self.group_object  # Store all groups
         except Exception:
             self.group_object = []
