@@ -4,8 +4,9 @@ Tests for AccountDetailsDialog and AccountRow tag editing functionality.
 
 from datetime import datetime
 from decimal import Decimal
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QLabel
+from PyQt5.QtGui import QKeyEvent
 import unittest.mock as mock
 
 from billeUI.accountdetailsdialog import AccountDetailsDialog
@@ -346,5 +347,115 @@ class TestAccountRowTagEditing:
         # Check that signal was emitted with modified=False
         assert len(signal_emissions) > 0
         assert signal_emissions[-1][3] == False  # modified should be False
+
+        row.close()
+
+    def test_edit_mode_does_not_close_on_focus_change(self, qapp, mock_account):
+        """Test that edit mode doesn't close when clicking away from line edit (the bug fix)."""
+        row = AccountRow(mock_account)
+        row.show()
+
+        # Enter edit mode
+        row.enable_edit_mode()
+
+        # Verify we're in edit mode
+        assert not row.name_line_edit.isHidden()
+        assert not row.tags_line_edit.isHidden()
+        assert row.name_label.isHidden()
+        assert row.tags_container.isHidden()
+
+        # Simulate focus change by clearing focus from name line edit
+        # This should NOT trigger show_qlabel() anymore (the bug fix)
+        row.name_line_edit.clearFocus()
+
+        # Verify we're still in edit mode (this is the key test for the bug fix)
+        assert not row.name_line_edit.isHidden()
+        assert not row.tags_line_edit.isHidden()
+        assert row.name_label.isHidden()
+        assert row.tags_container.isHidden()
+
+        # Now properly complete editing by pressing Enter
+        row.tags_line_edit.setText("new,tags")
+        row.show_qlabel()
+
+        # Verify edit mode is now properly closed
+        assert row.name_line_edit.isHidden()
+        assert row.tags_line_edit.isHidden()
+        assert not row.name_label.isHidden()
+        assert not row.tags_container.isHidden()
+
+        row.close()
+
+    def test_return_key_moves_focus_from_name_to_tags(self, qapp, mock_account):
+        """Test that pressing Enter in name field moves focus to tags field."""
+        row = AccountRow(mock_account)
+        row.show()
+
+        # Enter edit mode
+        row.enable_edit_mode()
+
+        # Simulate pressing Enter in name field
+        row.name_line_edit.returnPressed.emit()
+
+        # Verify the method was called (in headless mode we can't reliably test focus)
+        # but we can verify the widgets are still in edit mode
+        assert not row.name_line_edit.isHidden()
+        assert not row.tags_line_edit.isHidden()
+
+        row.close()
+
+    def test_return_key_in_tags_completes_editing(self, qapp, mock_account):
+        """Test that pressing Enter in tags field completes editing."""
+        row = AccountRow(mock_account)
+        row.show()
+
+        # Track signal emissions
+        signal_emissions = []
+
+        def slot(acc_id, name, tags, modified):
+            signal_emissions.append((acc_id, name, tags, modified))
+
+        row.account_modified.connect(slot)
+
+        # Enter edit mode
+        row.enable_edit_mode()
+        row.tags_line_edit.setText("new,tags")
+
+        # Simulate pressing Enter in tags field
+        row.tags_line_edit.returnPressed.emit()
+
+        # Verify editing completed
+        assert row.name_line_edit.isHidden()
+        assert row.tags_line_edit.isHidden()
+        assert not row.name_label.isHidden()
+        assert not row.tags_container.isHidden()
+
+        # Verify signal was emitted
+        assert len(signal_emissions) > 0
+
+        row.close()
+
+    def test_escape_key_cancels_edit_mode(self, qapp, mock_account):
+        """Test that pressing Escape cancels edit mode and reverts changes."""
+        row = AccountRow(mock_account)
+        row.show()
+
+        # Enter edit mode
+        row.enable_edit_mode()
+        row.name_line_edit.setText("ChangedName")
+        row.tags_line_edit.setText("changed,tags")
+
+        # Simulate pressing Escape
+        escape_event = QKeyEvent(QEvent.KeyPress, Qt.Key_Escape, Qt.NoModifier)
+        row.keyPressEvent(escape_event)
+
+        # Verify edit mode was cancelled
+        assert row.name_line_edit.isHidden()
+        assert row.tags_line_edit.isHidden()
+        assert not row.name_label.isHidden()
+        assert not row.tags_container.isHidden()
+
+        # Verify name was reverted (check the label, not the line edit)
+        assert row.account_name in row.name_label.text()
 
         row.close()

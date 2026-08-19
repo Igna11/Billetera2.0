@@ -103,7 +103,7 @@ class AccountRow(QWidget):
         self.name_line_edit = QLineEdit(self)
         self.name_line_edit.setText(self.account_name)
         self.name_line_edit.hide()
-        self.name_line_edit.editingFinished.connect(self.show_qlabel)
+        self.name_line_edit.returnPressed.connect(self.move_to_tags_edit)
         self.balance_label = QLabel(f"{currency_format(account.account_total)} {account.account_currency}")
         self.balance_label.setFont(font)
 
@@ -113,7 +113,7 @@ class AccountRow(QWidget):
         self.tags_line_edit.setText(",".join(self.account_tags) if self.account_tags else "")
         self.tags_line_edit.setPlaceholderText("Enter tags (comma-separated)")
         self.tags_line_edit.hide()
-        self.tags_line_edit.editingFinished.connect(self.show_qlabel)
+        self.tags_line_edit.returnPressed.connect(self.show_qlabel)
 
         # Buttons and Icons
         self.edit_btn = QPushButton()
@@ -170,6 +170,20 @@ class AccountRow(QWidget):
         self.tags_line_edit.show()
         self.name_line_edit.setFocus()
         self.name_line_edit.selectAll()
+
+    def move_to_tags_edit(self) -> None:
+        """Moves focus from name line edit to tags line edit"""
+        self.tags_line_edit.setFocus()
+        self.tags_line_edit.selectAll()
+
+    def cancel_edit_mode(self) -> None:
+        """Cancels edit mode and reverts to original values"""
+        self.name_line_edit.setText(self.account_name)
+        self.tags_line_edit.setText(",".join(self.account_tags) if self.account_tags else "")
+        self.name_line_edit.hide()
+        self.tags_line_edit.hide()
+        self.name_label.show()
+        self.tags_container.show()
 
     def show_qlabel(self) -> None:
         """Resets the label with the new values"""
@@ -261,6 +275,15 @@ class AccountRow(QWidget):
         """Open account details dialog on double click."""
         dialog = AccountDetailsDialog(self.account, self)
         dialog.exec()
+
+    def keyPressEvent(self, event) -> None:
+        """Handle key press events, specifically Escape to cancel edit mode."""
+        if event.key() == Qt.Key_Escape:
+            # Only cancel if we're in edit mode (line edits are visible)
+            if self.name_line_edit.isVisible() or self.tags_line_edit.isVisible():
+                self.cancel_edit_mode()
+        else:
+            super().keyPressEvent(event)
 
 
 class AccountBrowser(QMainWindow):
