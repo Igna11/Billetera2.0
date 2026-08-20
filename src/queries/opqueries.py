@@ -131,6 +131,7 @@ class ListOperationsQuery(Operations):
             - subcategory: Matches exact string,
             - description: Matches a for likeness,
             - tags: Matches exact strings of tags,
+            - accounts: List of account IDs to filter by,
             - order: set out order by datetime - allowd vals: 'ASC' or 'DESC',
         """
         op_db = OperationsDB(user_id=self.user_id)

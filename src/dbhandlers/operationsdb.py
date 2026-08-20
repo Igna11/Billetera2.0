@@ -144,6 +144,12 @@ class OperationsDB:
                 query_conditions.append("a.is_active = ?")
                 query_parameters.append(kwargs["is_active"])  # type: ignore[arg-type]
 
+            if "accounts" in kwargs and kwargs["accounts"] is not None:
+                account_ids = kwargs["accounts"]
+                account_ids_condition = " OR ".join(["o.account_id = ?"] * len(account_ids))
+                query_conditions.append(f"({account_ids_condition})")
+                query_parameters.extend([f"{acc_id}" for acc_id in account_ids])
+
         if query_conditions:
             select_query += " WHERE " + " AND ".join(query_conditions)
 

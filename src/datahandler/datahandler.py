@@ -235,6 +235,7 @@ class AccountDataAnalyzer(BaseModel):
         to_dt: datetime,
         currency: str,
         is_active: bool = True,
+        account_ids: Optional[List[str]] = None,
     ) -> List[Dict]:
         """
         Gets daily income and expense totals for a specific time period.
@@ -249,6 +250,7 @@ class AccountDataAnalyzer(BaseModel):
             to_dt: End datetime for the period
             currency: Currency filter to avoid mixing currencies
             is_active: Filter for active accounts
+            account_ids: Optional list of account IDs to filter by (if None, includes all accounts)
 
         Returns:
             List of dictionaries with keys 'day', 'income', 'expense'
@@ -259,7 +261,7 @@ class AccountDataAnalyzer(BaseModel):
         """
         # Get all operations for the time period
         operations = ListOperationsQuery(user_id=user_id).execute(
-            from_dt=from_dt, to_dt=to_dt, currency=currency, is_active=is_active, order="ASC"
+            from_dt=from_dt, to_dt=to_dt, currency=currency, is_active=is_active, accounts=account_ids, order="ASC"
         )
 
         # Check if this is a single month period
@@ -284,7 +286,11 @@ class AccountDataAnalyzer(BaseModel):
 
             # Convert to list of dictionaries sorted by day
             result = [
-                {"day": day, "income": float(totals["income"]), "expense": float(totals["expense"])}
+                {
+                    "day": day,
+                    "income": float(max(Decimal("0"), totals["income"])),
+                    "expense": float(max(Decimal("0"), totals["expense"])),
+                }
                 for day, totals in sorted(daily_totals.items())
             ]
         else:
@@ -300,8 +306,59 @@ class AccountDataAnalyzer(BaseModel):
 
             # Convert to list of dictionaries sorted by date
             result = [
-                {"day": date_str, "income": float(totals["income"]), "expense": float(totals["expense"])}
+                {
+                    "day": date_str,
+                    "income": float(max(Decimal("0"), totals["income"])),
+                    "expense": float(max(Decimal("0"), totals["expense"])),
+                }
                 for date_str, totals in sorted(daily_totals.items())
             ]
+
+        return result
+
+    @classmethod
+    def get_cumulative_points(
+        cls,
+        user_id: str,
+        from_dt: datetime,
+        to_dt: datetime,
+        currency: str,
+        is_active: bool = True,
+        account_ids: Optional[List[str]] = None,
+    ) -> List[Dict]:
+        """
+        Gets individual cumulative points from operations for specific accounts.
+
+        This method returns individual operation data with cumulative amounts and timestamps,
+        which can be plotted as points on a line chart to show balance progression.
+
+        Args:
+            user_id: User identifier
+            from_dt: Start datetime for the period
+            to_dt: End datetime for the period
+            currency: Currency filter to avoid mixing currencies
+            is_active: Filter for active accounts
+            account_ids: List of account IDs to filter by (if None, includes all accounts)
+
+        Returns:
+            List of dictionaries with keys 'datetime', 'cumulative', 'account_name'
+            e.g., [{'datetime': datetime(2026, 8, 1, 10, 30), 'cumulative': 500.0, 'account_name': 'Savings'}, ...]
+        """
+        # Get all operations for the time period
+        operations = ListOperationsQuery(user_id=user_id).execute(
+            from_dt=from_dt, to_dt=to_dt, currency=currency, is_active=is_active, accounts=account_ids, order="ASC"
+        )
+
+        # Extract cumulative points from operations
+        result = []
+        for oper in operations:
+            if oper.cumulative_amount is not None:
+                result.append(
+                    {
+                        "datetime": oper.operation_datetime,
+                        "cumulative": float(oper.cumulative_amount),
+                        "account_name": oper.account_name if hasattr(oper, "account_name") else "",
+                    }
+                )
 
         return result
