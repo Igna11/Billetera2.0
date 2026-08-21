@@ -60,6 +60,8 @@ BilleterApp is a Python-based expense tracker desktop application designed for p
 - Custom date range support for visualizations
 - ULID-based unique identifiers
 - Foreign key relationships with cascade handling
+- **Account selection panel** for filtering balance charts by specific accounts
+- **Multi-account cumulative plotting** with colored lines and dots for individual account balance tracking
 
 ## Database Schema
 - **operations**: transaction records with datetime indexing
@@ -109,22 +111,34 @@ BilleterApp is a Python-based expense tracker desktop application designed for p
 - Automatic X-axis label hiding for multi-month custom ranges
 
 ## Bar Chart Implementation Details
-- **Data Source**: `AccountDataAnalyzer.get_daily_totals()` provides daily income/expense data
+- **Data Source**: 
+  - `AccountDataAnalyzer.get_daily_totals()` provides daily income/expense data for all accounts
+  - `AccountDataAnalyzer.get_cumulative_points()` provides individual operation cumulative data for specific accounts
 - **Chart Components**: 
   - `MonthlyBalanceChart`: QtChart with three bar series (income, expense, balance) and trend line
   - `BalanceChartView`: Custom QChartView with mouse tracking for hover tooltips
+  - `AccountSelectionPanel`: Collapsible vertical panel for selecting which accounts to display
 - **Visual Features**:
-  - Green bars: Daily income (positive, above zero)
-  - Red bars: Daily expenses (negative, below zero)
-  - Light blue bars: Cumulative balance (running total)
-  - Dark blue dashed line: Trend line connecting balance peaks
-  - Black line: Zero reference line
+  - **Default mode (all accounts)**: 
+    - Green bars: Daily income (positive, above zero)
+    - Red bars: Daily expenses (negative, below zero)
+    - Light blue bars: Cumulative balance (running total)
+    - Dark blue dashed line: Trend line connecting balance peaks
+    - Black line: Zero reference line
+  - **Account-specific mode (selected accounts)**:
+    - Colored lines: Individual account cumulative balance progression
+    - Colored dots: Individual operation points with datetime-based x-axis positioning
+    - Consistent color assignment per account name
+    - Overlapping plot for multiple accounts at same timestamps
 - **Interactive Features**:
   - Right-click context menu to switch between pie and bar charts
   - Hover tooltips show date and balance for custom ranges
   - Monthly navigation with << >> buttons
   - Custom date range support via calendar dialog
   - Currency filtering
+  - Account selection panel with expand/collapse toggle
+  - "All" and "None" buttons for quick account selection
+  - Currency-sensitive account loading (only shows active accounts for selected currency)
 
 ## Future Enhancement Opportunities
 - Deferred expense tracking (credit cards)

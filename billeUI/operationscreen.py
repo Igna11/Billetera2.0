@@ -376,9 +376,6 @@ class OperationScreen(QMainWindow):
         )
         total_account_count = len(all_accounts)
 
-        # Get selected account objects for title display
-        selected_accounts = [acc for acc in all_accounts if acc.account_id in selected_account_ids]
-
         # Determine if we should use cumulative amounts or regular totals
         # Use cumulative amounts when specific accounts are selected, use regular totals when all accounts are selected
         # Empty selection or all accounts selected means "default mode" (regular totals)
@@ -397,19 +394,11 @@ class OperationScreen(QMainWindow):
                 account_ids=selected_account_ids,
             )
 
-            # Update chart title to indicate mode before updating chart
-            account_names = [acc.account_name for acc in selected_accounts]
-            accounts_str = ", ".join(account_names[:3])  # Show first 3 account names
-            if len(account_names) > 3:
-                accounts_str += f" +{len(account_names)-3} more"
-
-            # Update chart with cumulative points (use different method)
+            # Update chart with cumulative points (title is set internally in the chart method)
             self.bar_chart.update_chart_with_cumulative_points(cumulative_points, month, year)
-            self.bar_chart.setTitle(f"Account Balance - {accounts_str}")
 
-            # Set tooltip data for custom chart view
-            if isinstance(self.chart_view, BalanceChartView):
-                self.chart_view.set_tooltip_data(self.bar_chart.day_labels, self.bar_chart.total_values)
+            # Don't set tooltip data for cumulative charts - the values are visible on the chart
+            # and the tooltip system wasn't designed for multi-account scenarios
             return  # Skip the regular chart update
         else:
             # Use regular totals for all accounts (default behavior)

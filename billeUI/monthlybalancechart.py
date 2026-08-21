@@ -5,6 +5,7 @@ Monthly Balance Bar Chart Component
 Created for daily income/expense visualization
 """
 from typing import List, Dict
+from collections import defaultdict
 
 from PyQt5 import QtChart, QtGui
 from PyQt5.QtGui import QFont, QColor
@@ -168,12 +169,23 @@ class MonthlyBalanceChart(QtChart.QChart):
         self.zero_line.clear()
         self.trend_line.clear()
 
-        # Remove cumulative line if it exists
+        # Remove account-specific lines if they exist
+        if hasattr(self, "account_lines") and self.account_lines:
+            for line in self.account_lines:
+                self.removeSeries(line)
+            self.account_lines = []
+
+        # Remove account-specific scatter series if they exist
+        if hasattr(self, "account_scatters") and self.account_scatters:
+            for scatter in self.account_scatters:
+                self.removeSeries(scatter)
+            self.account_scatters = []
+
+        # Remove old cumulative line/scatter if they exist (for backward compatibility)
         if hasattr(self, "cumulative_line") and self.cumulative_line is not None:
             self.removeSeries(self.cumulative_line)
             self.cumulative_line = None
 
-        # Remove cumulative scatter series if it exists
         if hasattr(self, "cumulative_scatter") and self.cumulative_scatter is not None:
             self.removeSeries(self.cumulative_scatter)
             self.cumulative_scatter = None
@@ -206,82 +218,149 @@ class MonthlyBalanceChart(QtChart.QChart):
         if not cumulative_points:
             return
 
-        # Sort points by datetime
-        cumulative_points = sorted(cumulative_points, key=lambda x: x["datetime"])
+        # Group cumulative points by account
+        account_points = defaultdict(list)
+        for point in cumulative_points:
+            account_name = point.get("account_name", "Unknown")
+            account_points[account_name].append(point)
 
-        # Create a line series for cumulative balance
-        self.cumulative_line = QtChart.QLineSeries()
-        cumulative_pen = QtGui.QPen(QtGui.QColor("#1E90FF"))  # Dark blue for visibility
-        cumulative_pen.setWidth(2)
-        self.cumulative_line.setPen(cumulative_pen)
-        self.cumulative_line.setName("Account Balance")
+        # Define colors for different accounts (consistent assignment based on account name)
+        fallback_colors = [
+            "#1E90FF",  # Dodger Blue
+            "#FF6347",  # Tomato Red
+            "#32CD32",  # Lime Green
+            "#FFD700",  # Gold
+            "#9370DB",  # Medium Purple
+            "#FF69B4",  # Hot Pink
+            "#00CED1",  # Dark Turquoise
+            "#FF8C00",  # Dark Orange
+            "#8A2BE2",  # Blue Violet
+            "#00FA9A",  # Medium Spring Green
+        ]
 
-        # Create a scatter series for dots at each point
-        self.cumulative_scatter = QtChart.QScatterSeries()
-        self.cumulative_scatter.setColor(QtGui.QColor("#1E90FF"))  # Same color as line
-        self.cumulative_scatter.setMarkerSize(8)  # Size of the dots
-        self.cumulative_scatter.setBorderColor(QtGui.QColor("#1E90FF"))  # Border color same as fill
+        def get_account_color(account_name):
+            """Get consistent color for an account based on its name"""
+            color_map = {
+                "PersonalPay": "#1E90FF",  # Dodger Blue
+                "MercadoPago": "#FF6347",  # Tomato Red
+                "ReservasMP": "#32CD32",  # Lime Green
+                "GaliciaCompartida": "#FFD700",  # Gold
+                "Savings": "#9370DB",  # Medium Purple
+                "Checking": "#FF69B4",  # Hot Pink
+                "Investment": "#00CED1",  # Dark Turquoise
+                "Business": "#FF8C00",  # Dark Orange
+                "Travel": "#8A2BE2",  # Blue Violet
+                "Default": "#00FA9A",  # Medium Spring Green
+            }
+            return color_map.get(account_name, fallback_colors[hash(account_name) % len(fallback_colors)])
 
-        # Store day labels and total values for tooltips
+        # Store references to created series for cleanup
+        self.account_lines = []
+        self.account_scatters = []
+
+        # Store day labels for x-axis (no need for total_values in cumulative mode)
         self.day_labels = []
-        self.total_values = []
 
-        # Plot cumulative points
-        for i, point in enumerate(cumulative_points):
-            dt = point["datetime"]
-            cumulative = point["cumulative"]
+        # Store account names for title update
+        displayed_account_names = []
 
-            # X-axis position (index-based)
-            x_pos = i
-            y_pos = cumulative
+        # First, collect all unique datetimes to create a common time scale
+        all_datetimes = set()
+        all_cumulative_values = []  # Collect all cumulative values for Y-axis range
 
-            self.cumulative_line.append(x_pos, y_pos)
-            self.cumulative_scatter.append(x_pos, y_pos)
+        for account_name, points in account_points.items():
+            for point in points:
+                dt = point["datetime"]
+                all_datetimes.add(dt)
+                all_cumulative_values.append(point["cumulative"])
 
-            # For tooltips, use date string
+        # Sort all unique datetimes
+        sorted_datetimes = sorted(all_datetimes)
+
+        # Create a mapping from datetime to x-axis position
+        datetime_to_x = {dt: idx for idx, dt in enumerate(sorted_datetimes)}
+
+        # Create separate line and scatter series for each account
+        for idx, (account_name, points) in enumerate(sorted(account_points.items())):
+            # Sort points by datetime
+            points = sorted(points, key=lambda x: x["datetime"])
+
+            # Get consistent color for this account
+            color = get_account_color(account_name)
+
+            # Create line series for this account
+            line_series = QtChart.QLineSeries()
+            line_pen = QtGui.QPen(QtGui.QColor(color))
+            line_pen.setWidth(3)  # Thicker line for better visibility
+            line_series.setPen(line_pen)
+            line_series.setName(account_name)
+
+            # Create scatter series for dots for this account
+            scatter_series = QtChart.QScatterSeries()
+            scatter_series.setColor(QtGui.QColor(color))
+            scatter_series.setMarkerSize(10)  # Larger dots for better visibility
+            scatter_series.setBorderColor(QtGui.QColor(color))
+            scatter_series.setName(f"{account_name} (points)")
+
+            # Plot points for this account using datetime-based x-positions
+            for point in points:
+                dt = point["datetime"]
+                cumulative = point["cumulative"]
+
+                # X-axis position based on datetime (so different accounts overlap at same time)
+                x_pos = datetime_to_x[dt]
+                y_pos = cumulative
+
+                line_series.append(x_pos, y_pos)
+                scatter_series.append(x_pos, y_pos)
+
+            # Add series to chart
+            self.addSeries(line_series)
+            line_series.attachAxis(self.axis_x)
+            line_series.attachAxis(self.axis_y)
+
+            self.addSeries(scatter_series)
+            scatter_series.attachAxis(self.axis_x)
+            scatter_series.attachAxis(self.axis_y)
+
+            # Store references for cleanup
+            self.account_lines.append(line_series)
+            self.account_scatters.append(scatter_series)
+            displayed_account_names.append(account_name)
+
+        # Create x-axis labels from all unique datetimes
+        for dt in sorted_datetimes:
             date_str = dt.strftime("%Y-%m-%d")
             self.day_labels.append(date_str)
-            self.total_values.append(cumulative)
-
-        # Add the cumulative line to the chart
-        self.addSeries(self.cumulative_line)
-        self.cumulative_line.attachAxis(self.axis_x)
-        self.cumulative_line.attachAxis(self.axis_y)
-
-        # Add the scatter series (dots) to the chart
-        self.addSeries(self.cumulative_scatter)
-        self.cumulative_scatter.attachAxis(self.axis_x)
-        self.cumulative_scatter.attachAxis(self.axis_y)
 
         # Update X axis with reasonable labels (sample some dates)
         self.axis_x.clear()
-        if len(cumulative_points) <= 10:
+        total_points = len(sorted_datetimes)
+        if total_points <= 10:
             # Show all dates if few points
-            x_labels = [point["datetime"].strftime("%m-%d") for point in cumulative_points]
-            x_categories = [str(i) for i in range(len(cumulative_points))]
-            self.axis_x.append(x_categories)
+            x_labels = [dt.strftime("%m-%d") for dt in sorted_datetimes]
+            self.axis_x.append(x_labels)
         else:
             # Show a subset of dates to avoid overcrowding
-            step = max(1, len(cumulative_points) // 10)
-            x_categories = [str(i) for i in range(len(cumulative_points))]
-            self.axis_x.append(x_categories)
-            # Hide intermediate labels by setting them to empty strings
-            for i in range(len(x_categories)):
-                if i % step != 0:
-                    # Set intermediate labels to empty (though Qt may still show indices)
-                    pass
+            step = max(1, total_points // 10)
+            x_labels = []
+            for i, dt in enumerate(sorted_datetimes):
+                if i % step == 0:
+                    x_labels.append(dt.strftime("%m-%d"))
+                else:
+                    x_labels.append("")  # Empty label for hidden points
+            self.axis_x.append(x_labels)
 
-        # Update Y axis range based on cumulative values
-        cumulative_values = [point["cumulative"] for point in cumulative_points]
-        if cumulative_values:
-            min_val = min(cumulative_values)
-            max_val = max(cumulative_values)
+        # Update Y axis range based on all cumulative values with better padding
+        if all_cumulative_values:
+            min_val = min(all_cumulative_values)
+            max_val = max(all_cumulative_values)
             range_size = max_val - min_val
             if range_size == 0:
                 range_size = max(abs(max_val), 100)  # Default range if all values are same
 
-            # Add some padding
-            padding = range_size * 0.1
+            # Add more padding for better visibility (20% instead of 10%)
+            padding = range_size * 0.2
             self.axis_y.setRange(min_val - padding, max_val + padding)
         else:
             self.axis_y.setRange(-100, 100)
@@ -292,7 +371,13 @@ class MonthlyBalanceChart(QtChart.QChart):
         # Update zero line position (at y=0)
         self.zero_line.clear()
         self.zero_line.append(0, 0)
-        self.zero_line.append(len(cumulative_points) - 1, 0)
+        self.zero_line.append(len(sorted_datetimes) - 1, 0)
+
+        # Update title to show multiple accounts
+        accounts_str = ", ".join(displayed_account_names[:3])
+        if len(displayed_account_names) > 3:
+            accounts_str += f" +{len(displayed_account_names)-3} more"
+        self.setTitle(f"Account Balance - {accounts_str}")
 
     def update_chart(self, daily_data: List[Dict[str, any]], month: int, year: int) -> None:
         """

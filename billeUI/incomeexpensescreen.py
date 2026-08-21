@@ -119,7 +119,7 @@ class IncomeExpenseScreen(QMainWindow):
 
     def set_acc_data(self, i: int) -> None:
         """Sets the values of acc_name, acc_currency and the value of total label."""
-        list_acc_objects = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(active=1)
+        list_acc_objects = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(is_active=1)
         if list_acc_objects:
             self.acc_list = [acc.account_name for acc in list_acc_objects]
             self.acc_list_currencies = [acc.account_currency for acc in list_acc_objects]
