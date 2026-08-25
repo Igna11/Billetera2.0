@@ -282,7 +282,7 @@ class TestAccountRowTagEditing:
 
         # Check that signal was emitted with modified=True
         assert len(signal_emissions) > 0
-        assert signal_emissions[-1][3] == True  # modified should be True
+        assert signal_emissions[-1][3] is True  # modified should be True
         assert signal_emissions[-1][2] == ("new", "tags")  # tags should be updated
 
         row.close()
@@ -320,7 +320,7 @@ class TestAccountRowTagEditing:
 
         # Check that signal was emitted with modified=True
         assert len(signal_emissions) > 0
-        assert signal_emissions[-1][3] == True  # modified should be True
+        assert signal_emissions[-1][3] is True  # modified should be True
         assert signal_emissions[-1][1] == "NewName"
         assert signal_emissions[-1][2] == ("new", "tags")
 
@@ -346,7 +346,7 @@ class TestAccountRowTagEditing:
 
         # Check that signal was emitted with modified=False
         assert len(signal_emissions) > 0
-        assert signal_emissions[-1][3] == False  # modified should be False
+        assert signal_emissions[-1][3] is False  # modified should be False
 
         row.close()
 

@@ -5,7 +5,6 @@ Monthly Balance Bar Chart Component
 Created for daily income/expense visualization
 """
 from typing import List, Dict
-from collections import defaultdict
 
 from PyQt5 import QtChart, QtGui
 from PyQt5.QtGui import QFont, QColor
@@ -169,223 +168,12 @@ class MonthlyBalanceChart(QtChart.QChart):
         self.zero_line.clear()
         self.trend_line.clear()
 
-        # Remove account-specific lines if they exist
-        if hasattr(self, "account_lines") and self.account_lines:
-            for line in self.account_lines:
-                self.removeSeries(line)
-            self.account_lines = []
-
-        # Remove account-specific scatter series if they exist
-        if hasattr(self, "account_scatters") and self.account_scatters:
-            for scatter in self.account_scatters:
-                self.removeSeries(scatter)
-            self.account_scatters = []
-
-        # Remove old cumulative line/scatter if they exist (for backward compatibility)
-        if hasattr(self, "cumulative_line") and self.cumulative_line is not None:
-            self.removeSeries(self.cumulative_line)
-            self.cumulative_line = None
-
-        if hasattr(self, "cumulative_scatter") and self.cumulative_scatter is not None:
-            self.removeSeries(self.cumulative_scatter)
-            self.cumulative_scatter = None
-
-        # Re-enable series that might have been hidden in cumulative mode
-        self.income_series.setVisible(True)
-        self.expense_series.setVisible(True)
-        self.total_series.setVisible(True)
-        self.trend_line.setVisible(True)
-
-    def update_chart_with_cumulative_points(
-        self, cumulative_points: List[Dict[str, any]], month: int, year: int
-    ) -> None:
-        """
-        Update the chart with cumulative points as a line (for individual account balance tracking).
-
-        Args:
-            cumulative_points: List of dictionaries with keys 'datetime', 'cumulative', 'account_name'
-            month: Month number (1-12)
-            year: Year
-        """
-        self.clear_data()
-
-        # Hide income/expense/trend series for cumulative view (we'll only show the cumulative line)
-        self.income_series.setVisible(False)
-        self.expense_series.setVisible(False)
-        self.total_series.setVisible(False)
-        self.trend_line.setVisible(False)
-
-        if not cumulative_points:
-            return
-
-        # Group cumulative points by account
-        account_points = defaultdict(list)
-        for point in cumulative_points:
-            account_name = point.get("account_name", "Unknown")
-            account_points[account_name].append(point)
-
-        # Define colors for different accounts (consistent assignment based on account name)
-        fallback_colors = [
-            "#1E90FF",  # Dodger Blue
-            "#FF6347",  # Tomato Red
-            "#32CD32",  # Lime Green
-            "#FFD700",  # Gold
-            "#9370DB",  # Medium Purple
-            "#FF69B4",  # Hot Pink
-            "#00CED1",  # Dark Turquoise
-            "#FF8C00",  # Dark Orange
-            "#8A2BE2",  # Blue Violet
-            "#00FA9A",  # Medium Spring Green
-        ]
-
-        def get_account_color(account_name):
-            """Get consistent color for an account based on its name"""
-            color_map = {
-                "PersonalPay": "#1E90FF",  # Dodger Blue
-                "MercadoPago": "#FF6347",  # Tomato Red
-                "ReservasMP": "#32CD32",  # Lime Green
-                "GaliciaCompartida": "#FFD700",  # Gold
-                "Savings": "#9370DB",  # Medium Purple
-                "Checking": "#FF69B4",  # Hot Pink
-                "Investment": "#00CED1",  # Dark Turquoise
-                "Business": "#FF8C00",  # Dark Orange
-                "Travel": "#8A2BE2",  # Blue Violet
-                "Default": "#00FA9A",  # Medium Spring Green
-            }
-            return color_map.get(account_name, fallback_colors[hash(account_name) % len(fallback_colors)])
-
-        # Store references to created series for cleanup
-        self.account_lines = []
-        self.account_scatters = []
-
-        # Store day labels for x-axis (no need for total_values in cumulative mode)
-        self.day_labels = []
-
-        # Store account names for title update
-        displayed_account_names = []
-
-        # First, collect all unique datetimes to create a common time scale
-        all_datetimes = set()
-        all_cumulative_values = []  # Collect all cumulative values for Y-axis range
-
-        for account_name, points in account_points.items():
-            for point in points:
-                dt = point["datetime"]
-                all_datetimes.add(dt)
-                all_cumulative_values.append(point["cumulative"])
-
-        # Sort all unique datetimes
-        sorted_datetimes = sorted(all_datetimes)
-
-        # Create a mapping from datetime to x-axis position
-        datetime_to_x = {dt: idx for idx, dt in enumerate(sorted_datetimes)}
-
-        # Create separate line and scatter series for each account
-        for idx, (account_name, points) in enumerate(sorted(account_points.items())):
-            # Sort points by datetime
-            points = sorted(points, key=lambda x: x["datetime"])
-
-            # Get consistent color for this account
-            color = get_account_color(account_name)
-
-            # Create line series for this account
-            line_series = QtChart.QLineSeries()
-            line_pen = QtGui.QPen(QtGui.QColor(color))
-            line_pen.setWidth(3)  # Thicker line for better visibility
-            line_series.setPen(line_pen)
-            line_series.setName(account_name)
-
-            # Create scatter series for dots for this account
-            scatter_series = QtChart.QScatterSeries()
-            scatter_series.setColor(QtGui.QColor(color))
-            scatter_series.setMarkerSize(10)  # Larger dots for better visibility
-            scatter_series.setBorderColor(QtGui.QColor(color))
-            scatter_series.setName(f"{account_name} (points)")
-
-            # Plot points for this account using datetime-based x-positions
-            for point in points:
-                dt = point["datetime"]
-                cumulative = point["cumulative"]
-
-                # X-axis position based on datetime (so different accounts overlap at same time)
-                x_pos = datetime_to_x[dt]
-                y_pos = cumulative
-
-                line_series.append(x_pos, y_pos)
-                scatter_series.append(x_pos, y_pos)
-
-            # Add series to chart
-            self.addSeries(line_series)
-            line_series.attachAxis(self.axis_x)
-            line_series.attachAxis(self.axis_y)
-
-            self.addSeries(scatter_series)
-            scatter_series.attachAxis(self.axis_x)
-            scatter_series.attachAxis(self.axis_y)
-
-            # Store references for cleanup
-            self.account_lines.append(line_series)
-            self.account_scatters.append(scatter_series)
-            displayed_account_names.append(account_name)
-
-        # Create x-axis labels from all unique datetimes
-        for dt in sorted_datetimes:
-            date_str = dt.strftime("%Y-%m-%d")
-            self.day_labels.append(date_str)
-
-        # Update X axis with reasonable labels (sample some dates)
-        self.axis_x.clear()
-        total_points = len(sorted_datetimes)
-        if total_points <= 10:
-            # Show all dates if few points
-            x_labels = [dt.strftime("%m-%d") for dt in sorted_datetimes]
-            self.axis_x.append(x_labels)
-        else:
-            # Show a subset of dates to avoid overcrowding
-            step = max(1, total_points // 10)
-            x_labels = []
-            for i, dt in enumerate(sorted_datetimes):
-                if i % step == 0:
-                    x_labels.append(dt.strftime("%m-%d"))
-                else:
-                    x_labels.append("")  # Empty label for hidden points
-            self.axis_x.append(x_labels)
-
-        # Update Y axis range based on all cumulative values with better padding
-        if all_cumulative_values:
-            min_val = min(all_cumulative_values)
-            max_val = max(all_cumulative_values)
-            range_size = max_val - min_val
-            if range_size == 0:
-                range_size = max(abs(max_val), 100)  # Default range if all values are same
-
-            # Add more padding for better visibility (20% instead of 10%)
-            padding = range_size * 0.2
-            self.axis_y.setRange(min_val - padding, max_val + padding)
-        else:
-            self.axis_y.setRange(-100, 100)
-
-        # Format Y axis labels as currency
-        self.axis_y.setLabelFormat("%.2f")
-
-        # Update zero line position (at y=0)
-        self.zero_line.clear()
-        self.zero_line.append(0, 0)
-        self.zero_line.append(len(sorted_datetimes) - 1, 0)
-
-        # Update title to show multiple accounts
-        accounts_str = ", ".join(displayed_account_names[:3])
-        if len(displayed_account_names) > 3:
-            accounts_str += f" +{len(displayed_account_names)-3} more"
-        self.setTitle(f"Account Balance - {accounts_str}")
-
     def update_chart(self, daily_data: List[Dict[str, any]], month: int, year: int) -> None:
         """
         Update the chart with daily data.
 
         Args:
             daily_data: List of dictionaries with keys 'day', 'income', 'expense'
-                       Can also include 'cumulative' key for actual cumulative amounts
             month: Month number (1-12)
             year: Year
         """
@@ -403,47 +191,26 @@ class MonthlyBalanceChart(QtChart.QChart):
         expense_values = []
         total_values = []
 
-        # Check if we have cumulative data from operations
-        has_cumulative_data = "cumulative" in daily_data[0]
+        # Calculate cumulative balance from income/expense
+        running_balance = 0.0
 
-        if has_cumulative_data:
-            # Use actual cumulative amounts from operations
-            for data in daily_data:
-                day = data["day"]
-                income = float(data.get("income", 0))
-                expense = float(data.get("expense", 0))
-                cumulative = float(data.get("cumulative", 0))
+        for data in daily_data:
+            day = data["day"]
+            income = float(data.get("income", 0))
+            expense = float(data.get("expense", 0))
 
-                # Ensure income is never negative and expense is never negative
-                income = max(0, income)
-                expense = max(0, expense)
+            # Ensure income is never negative and expense is never negative
+            income = max(0, income)
+            expense = max(0, expense)
 
-                # Convert day to string for display (handles both int and str)
-                days.append(str(day))
-                income_values.append(income)
-                expense_values.append(-expense)  # Make expenses negative
-                total_values.append(cumulative)  # Use actual cumulative amount
-        else:
-            # Calculate cumulative balance from income/expense (default behavior)
-            running_balance = 0.0
+            # Convert day to string for display (handles both int and str)
+            days.append(str(day))
+            income_values.append(income)
+            expense_values.append(-expense)  # Make expenses negative
 
-            for data in daily_data:
-                day = data["day"]
-                income = float(data.get("income", 0))
-                expense = float(data.get("expense", 0))
-
-                # Ensure income is never negative and expense is never negative
-                income = max(0, income)
-                expense = max(0, expense)
-
-                # Convert day to string for display (handles both int and str)
-                days.append(str(day))
-                income_values.append(income)
-                expense_values.append(-expense)  # Make expenses negative
-
-                # Calculate running balance for this day
-                running_balance += income - expense
-                total_values.append(running_balance)
+            # Calculate running balance for this day
+            running_balance += income - expense
+            total_values.append(running_balance)
 
         # Update bar sets
         self.income_bar_set.append(income_values)

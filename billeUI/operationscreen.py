@@ -5,7 +5,7 @@ created on 12/02/2023
 updated on 21/06/2026
 """
 import os
-from typing import List, Optional
+from typing import List
 from decimal import Decimal
 from datetime import datetime
 
@@ -14,7 +14,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QPainter
 from PyQt5.QtChart import QChartView
-from PyQt5.QtWidgets import QMainWindow, QStackedWidget, QHBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QStackedWidget
 
 from billeUI import UISPATH
 from billeUI import (
@@ -32,7 +32,6 @@ from billeUI import (
     monthlybalancechart,
 )
 from billeUI.monthlybalancechart import BalanceChartView
-from billeUI.accountselectionpanel import AccountSelectionPanel
 
 from src.queries.accqueries import ListAccountsQuery
 from src.datahandler.datahandler import AccountDataAnalyzer
@@ -52,16 +51,6 @@ class OperationScreen(QMainWindow):
         # Accounts information dashlet
         self.set_account_dashlet_widget()
 
-        # Account selection panel for balance charts
-        self.account_selection_panel = AccountSelectionPanel()
-        self.account_selection_panel.account_selection_changed.connect(self.on_account_selection_changed)
-
-        # Load accounts into the selection panel
-        accounts = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(
-            currency=self.currency, is_active=1
-        )
-        self.account_selection_panel.set_accounts(accounts)
-
         # Modifiers
         self.pie_chart = categorypiechart.CategoricalPieChart()
         self.pie_chart.setBackgroundVisible(False)
@@ -80,16 +69,8 @@ class OperationScreen(QMainWindow):
         self.currency_combobox.currentIndexChanged.connect(self.change_currency_chart)
         self.currency_combobox.currentIndexChanged.connect(self.set_account_dashlet_widget)
 
-        # Create a horizontal layout for chart area with account selection panel on the right
-        self.chart_with_panel_layout = QHBoxLayout()
-        self.chart_with_panel_layout.setSpacing(5)
-
-        # Add the chart view and account selection panel to the horizontal layout
-        self.chart_with_panel_layout.addWidget(self.chart_view, stretch=1)
-        self.chart_with_panel_layout.addWidget(self.account_selection_panel)
-
-        # Add the chart_with_panel_layout to the central_VR_layout at the bottom
-        self.central_VR_Layout.addLayout(self.chart_with_panel_layout)
+        # Add the chart view directly to the central_VR_layout
+        self.central_VR_Layout.addWidget(self.chart_view)
 
     def setup_ui(self) -> None:
         """Loads the ui file"""
@@ -290,8 +271,8 @@ class OperationScreen(QMainWindow):
         self.chart_view.setContextMenuPolicy(Qt.CustomContextMenu)
         self.chart_view.customContextMenuRequested.connect(self.show_chart_context_menu)
 
-        # Replace the chart view in the horizontal layout
-        self.chart_with_panel_layout.replaceWidget(old_chart_view, self.chart_view)
+        # Replace the chart view in the layout
+        self.central_VR_Layout.replaceWidget(old_chart_view, self.chart_view)
 
         # Remove old chart view from layout
         old_chart_view.setParent(None)
@@ -316,8 +297,8 @@ class OperationScreen(QMainWindow):
         self.chart_view.setContextMenuPolicy(Qt.CustomContextMenu)
         self.chart_view.customContextMenuRequested.connect(self.show_chart_context_menu)
 
-        # Replace the chart view in the horizontal layout
-        self.chart_with_panel_layout.replaceWidget(old_chart_view, self.chart_view)
+        # Replace the chart view in the layout
+        self.central_VR_Layout.replaceWidget(old_chart_view, self.chart_view)
 
         # Remove old chart view from layout
         old_chart_view.setParent(None)
@@ -367,49 +348,15 @@ class OperationScreen(QMainWindow):
             month = self.selected_datetime.month
             year = self.selected_datetime.year
 
-        # Get selected account IDs from the selection panel
-        selected_account_ids = list(self.account_selection_panel.get_selected_account_ids())
-
-        # Get total number of accounts for this currency
-        all_accounts = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(
-            currency=self.currency, is_active=1
+        # Use regular totals for all accounts (default behavior)
+        daily_data = AccountDataAnalyzer.get_daily_totals(
+            user_id=self.widget.user_object.user_id,
+            from_dt=from_datetime,
+            to_dt=to_datetime,
+            currency=self.currency,
+            is_active=True,
+            account_ids=None,  # All accounts
         )
-        total_account_count = len(all_accounts)
-
-        # Determine if we should use cumulative amounts or regular totals
-        # Use cumulative amounts when specific accounts are selected, use regular totals when all accounts are selected
-        # Empty selection or all accounts selected means "default mode" (regular totals)
-        use_cumulative = (
-            selected_account_ids and len(selected_account_ids) > 0 and len(selected_account_ids) < total_account_count
-        )
-
-        if use_cumulative:
-            # Use cumulative points for specific accounts
-            cumulative_points = AccountDataAnalyzer.get_cumulative_points(
-                user_id=self.widget.user_object.user_id,
-                from_dt=from_datetime,
-                to_dt=to_datetime,
-                currency=self.currency,
-                is_active=True,
-                account_ids=selected_account_ids,
-            )
-
-            # Update chart with cumulative points (title is set internally in the chart method)
-            self.bar_chart.update_chart_with_cumulative_points(cumulative_points, month, year)
-
-            # Don't set tooltip data for cumulative charts - the values are visible on the chart
-            # and the tooltip system wasn't designed for multi-account scenarios
-            return  # Skip the regular chart update
-        else:
-            # Use regular totals for all accounts (default behavior)
-            daily_data = AccountDataAnalyzer.get_daily_totals(
-                user_id=self.widget.user_object.user_id,
-                from_dt=from_datetime,
-                to_dt=to_datetime,
-                currency=self.currency,
-                is_active=True,
-                account_ids=None,  # All accounts
-            )
 
         # Update chart with real data
         self.bar_chart.update_chart(daily_data, month, year)
@@ -417,11 +364,6 @@ class OperationScreen(QMainWindow):
         # Set tooltip data for custom chart view
         if isinstance(self.chart_view, BalanceChartView):
             self.chart_view.set_tooltip_data(self.bar_chart.day_labels, self.bar_chart.total_values)
-
-    def on_account_selection_changed(self):
-        """Handle account selection changes - update bar chart if currently displayed"""
-        if self.current_chart_type == "bar":
-            self.update_bar_chart()
 
     def current_month_chart(self):
         """generates a pie chart of the current month and resets all chart data variables"""
@@ -643,12 +585,6 @@ class OperationScreen(QMainWindow):
     def change_currency_chart(self):
         """Change the currency of the chart"""
         self.currency = self.currency_combobox.currentText()
-
-        # Update account selection panel with new currency accounts
-        accounts = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute(
-            currency=self.currency, is_active=1
-        )
-        self.account_selection_panel.set_accounts(accounts)
 
         if self.current_chart_type == "pie":
             if self.period_dict:

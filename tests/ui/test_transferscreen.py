@@ -165,7 +165,7 @@ class TestTransferScreen:
         screen = TransferScreen(widget=stacked_widget)
         qtbot.addWidget(screen)
 
-        initial_count = stacked_widget.count()
+        stacked_widget.count()
 
         # Click cancel button - should attempt navigation without crashing
         try:
@@ -210,7 +210,7 @@ class TestTransferScreen:
         qtbot.addWidget(screen)
 
         # Get initial account data
-        initial_currency = screen.origin_acc_currency
+        screen.origin_acc_currency
 
         # If there are multiple accounts, change selection
         if screen.accounts_origin_comboBox.count() > 1:
@@ -232,7 +232,7 @@ class TestTransferScreen:
         qtbot.addWidget(screen)
 
         # Get initial account data
-        initial_currency = screen.dest_acc_currency
+        screen.dest_acc_currency
 
         # If there are multiple accounts, change selection
         if screen.accounts_dest_comboBox.count() > 1:

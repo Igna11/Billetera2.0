@@ -27,7 +27,7 @@ class WelcomeScreen(QMainWindow):
         welcome_screen = os.path.join(UISPATH, "bille_screen.ui")
         loadUi(welcome_screen, self)
         # Initialize database if needed
-        user_db = UsersDB()
+        UsersDB()
         # The database tables are created automatically by DatabaseConnection
         self.widget = widget
         self.login_button.clicked.connect(self.login_window)
