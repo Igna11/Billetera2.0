@@ -295,26 +295,3 @@ class MonthlyBalanceChart(QtChart.QChart):
         else:
             self.setTitle(f"Monthly Balance - {month_names[month-1]} {year}")
 
-    def set_mock_data(self, month: int, year: int) -> None:
-        """
-        Set mock data for demonstration purposes.
-        This simulates what the real data would look like.
-        """
-        import random
-        from calendar import monthrange
-
-        # Get number of days in the month
-        num_days = monthrange(year, month)[1]
-
-        # Generate mock data with realistic cumulative balance
-        mock_data = []
-        for day in range(1, num_days + 1):
-            # Random income between 0 and 500
-            income = random.uniform(0, 500) if random.random() > 0.4 else 0
-
-            # Random expense between 0 and 400 (will be made negative in update_chart)
-            expense = random.uniform(0, 400) if random.random() > 0.3 else 0
-
-            mock_data.append({"day": day, "income": income, "expense": expense})
-
-        self.update_chart(mock_data, month, year)
