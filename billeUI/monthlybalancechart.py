@@ -233,7 +233,7 @@ class MonthlyBalanceChart(QtChart.QChart):
         else:
             self.axis_x.setLabelsVisible(True)
 
-        # Update Y axis with zero in the middle, considering cumulative values
+        # Update Y axis with asymmetric limits based on actual data ranges
         max_income = max(income_values) if income_values else 0
         max_expense = max(abs(x) for x in expense_values) if expense_values else 0
 
@@ -244,18 +244,24 @@ class MonthlyBalanceChart(QtChart.QChart):
         max_total_positive = max(positive_totals) if positive_totals else 0
         max_total_negative = min(negative_totals) if negative_totals else 0
 
-        max_positive = max(max_income, max_total_positive)
-        max_negative = max(max_expense, abs(max_total_negative))
-        max_value = max(max_positive, max_negative)
+        # Calculate asymmetric Y-axis limits based on actual data
+        y_limit_positive = max(max_income, max_total_positive) * 1.1
+        y_limit_negative = min(max_total_negative, -max_expense) * 1.1
 
-        if max_value > 0:
-            # Set range from -max_value to +max_value with zero in middle
-            self.axis_y.setRange(-max_value * 1.1, max_value * 1.1)
+        # Ensure we have some minimum range if all values are zero
+        if y_limit_positive == 0 and y_limit_negative == 0:
+            y_limit_positive = 100
+            y_limit_negative = -100
+
+        self.axis_y.setRange(y_limit_negative, y_limit_positive)
+
+        # Format Y axis labels - use simpler format for better readability
+        # Note: QtChart doesn't support custom suffixes like K/M directly in setLabelFormat
+        # For proper K/M formatting, would need custom axis implementation
+        if y_limit_positive >= 1_000_000 or abs(y_limit_negative) >= 1_000_000:
+            self.axis_y.setLabelFormat("%.0f")  # Use simpler format for large numbers
         else:
-            self.axis_y.setRange(-100, 100)  # Default range
-
-        # Format Y axis labels as currency
-        self.axis_y.setLabelFormat("%.2f")
+            self.axis_y.setLabelFormat("%.0f")  # Regular format
 
         # Update zero line position
         self.zero_line.clear()
