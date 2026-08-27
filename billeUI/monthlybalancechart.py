@@ -294,4 +294,3 @@ class MonthlyBalanceChart(QtChart.QChart):
             self.setTitle("Balance - Custom Range")
         else:
             self.setTitle(f"Monthly Balance - {month_names[month-1]} {year}")
-

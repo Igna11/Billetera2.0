@@ -95,9 +95,7 @@ class GroupComboBoxDelegate(QStyledItemDelegate):
         # Add "N/A" option
         editor.addItem("N/A", None)
 
-        # Limit to 10 groups maximum
-        max_groups = 10
-        for i, (group_id, group_name) in enumerate(self.groups_list[:max_groups]):
+        for i, (group_id, group_name) in enumerate(self.groups_list):
             editor.addItem(group_name, group_id)
 
         # Add completer for search functionality
