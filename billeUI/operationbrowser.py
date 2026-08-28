@@ -28,8 +28,6 @@ from src.commands.groupcommands import CreateOperationGroupCommand
 from src.ophandlers.deletehandler import DeletionHandler
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
-from src.datahandler.datahandler import AccountDataAnalyzer
-
 from billeUI import UISPATH, operationscreen, currency_format, animatedlabel, headerfiltermixin
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
@@ -323,8 +321,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
     def get_all_operations_data(self) -> List:
         """Makes the query to fetch ALL operations in ALL accounts"""
-        acc_data_obj = AccountDataAnalyzer(user_id=self.widget.user_object.user_id)
-        all_operations = acc_data_obj.get_all_operations()
+        all_operations = ListOperationsQuery(user_id=self.widget.user_object.user_id).execute(order="DESC")
         self.add_account_column()
         return all_operations
 

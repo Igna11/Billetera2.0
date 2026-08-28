@@ -24,7 +24,7 @@ class AccountDataAnalyzer(BaseModel):
     coeff: ClassVar[dict] = {"income": 1, "expense": -1, "transfer_in": 0, "transfer_out": 0}
 
     def get_all_operations(self, **kwargs) -> List[Operations]:
-        return ListOperationsQuery(user_id=self.user_id).execute(order="ASC", **kwargs)
+        return ListOperationsQuery(user_id=self.user_id).execute(order="DESC", **kwargs)
 
     @classmethod
     def get_user_totals(cls, user_id: str, **kwargs) -> Dict[str, Decimal]:
