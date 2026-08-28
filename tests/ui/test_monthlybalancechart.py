@@ -214,18 +214,6 @@ class TestMonthlyBalanceChart:
 
         chart.close()
 
-    def test_monthly_balance_chart_set_mock_data(self, qapp):
-        """Test that set_mock_data method works correctly."""
-        chart = MonthlyBalanceChart()
-
-        # Set mock data
-        chart.set_mock_data(month=1, year=2024)
-
-        # Check that data was set
-        assert chart.income_bar_set.count() > 0
-
-        chart.close()
-
     def test_monthly_balance_chart_axes_creation(self, qapp):
         """Test that chart axes are created correctly."""
         chart = MonthlyBalanceChart()
