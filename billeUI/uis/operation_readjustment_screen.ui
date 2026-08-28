@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>499</width>
-    <height>567</height>
+    <height>572</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -42,7 +42,7 @@
        </item>
        <item>
         <widget class="QWidget" name="main_widget" native="true">
-         <layout class="QHBoxLayout" name="horizontalLayout" stretch="5,1,1">
+         <layout class="QHBoxLayout" name="horizontalLayout" stretch="5,0,3">
           <property name="spacing">
            <number>5</number>
           </property>
@@ -103,6 +103,35 @@ border-radius:5px;
                   </property>
                  </widget>
                 </item>
+                <item alignment="Qt::AlignLeft">
+                 <widget class="QLabel" name="tags_label_simple">
+                  <property name="font">
+                   <font>
+                    <pointsize>8</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Tags (comma-separated)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="tags_line_simple">
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(255, 255, 255);
+border-radius:5px;</string>
+                  </property>
+                  <property name="placeholderText">
+                   <string>Tags (e.g., correction, adjustment)</string>
+                  </property>
+                 </widget>
+                </item>
                 <item>
                  <spacer name="data_verticalSpacer">
                   <property name="orientation">
@@ -111,7 +140,7 @@ border-radius:5px;
                   <property name="sizeHint" stdset="0">
                    <size>
                     <width>20</width>
-                    <height>195</height>
+                    <height>155</height>
                    </size>
                   </property>
                  </spacer>
@@ -270,7 +299,7 @@ border-radius:5px;</string>
            </spacer>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="acc_verticalLayout" stretch="0,0,0,0">
+           <layout class="QVBoxLayout" name="acc_verticalLayout" stretch="0,0,0,0,0,0,0">
             <property name="spacing">
              <number>5</number>
             </property>
@@ -306,6 +335,47 @@ border-radius:5px;</string>
               </property>
               <property name="text">
                <string>Total: </string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="tags_label">
+              <property name="font">
+               <font>
+                <pointsize>8</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Tags (comma-separated)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="tags_line">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>9</pointsize>
+               </font>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">background-color: rgb(255, 255, 255);
+border-radius:5px;</string>
+              </property>
+              <property name="placeholderText">
+               <string>Tags (e.g., correction, adjustment)</string>
               </property>
              </widget>
             </item>

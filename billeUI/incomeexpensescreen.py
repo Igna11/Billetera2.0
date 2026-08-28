@@ -22,6 +22,7 @@ from src.commands.groupcommands import CreateOperationGroupCommand
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
 from billeUI import UISPATH, operationscreen, groupbrowser, animatedlabel, currency_format
+from billeUI.operationbrowser import clean_tags
 
 
 class IncomeExpenseScreen(QMainWindow):
@@ -248,6 +249,10 @@ class IncomeExpenseScreen(QMainWindow):
         subcategory = self.subcategory_line.text()
         description = self.description_line.text()
 
+        # Get and clean tags
+        tags_text = self.tags_line.text()
+        cleaned_tags = clean_tags(tags_text)
+
         # Get group_id if checkbox is checked and a group is selected
         group_id = None
         if self.group_operation_checkBox.isChecked() and self.group_combo_box.isEnabled():
@@ -271,6 +276,7 @@ class IncomeExpenseScreen(QMainWindow):
                 subcategory=subcategory,
                 description=description,
                 group_id=group_id,
+                tags=cleaned_tags,
             )
             operation.set_account_total()
             cmls = operation.set_cumulatives()
@@ -303,6 +309,7 @@ class IncomeExpenseScreen(QMainWindow):
         self.category_line.textChanged.connect(self.activate_save_button)
         self.subcategory_line.textChanged.connect(self.activate_save_button)
         self.description_line.textChanged.connect(self.activate_save_button)
+        self.tags_line.textChanged.connect(self.activate_save_button)
 
     def cancel(self) -> None:
         """Returns to the OperationScreen Menu"""

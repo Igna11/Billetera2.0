@@ -18,6 +18,7 @@ from src.ophandlers.operationhandler import OperationHandler
 from src.queries.opqueries import GetUniqueCategoriesQuery, GetUniqueSubcategoriesQuery
 
 from billeUI import UISPATH, operationscreen, animatedlabel
+from billeUI.operationbrowser import clean_tags
 
 
 class ReadjustmentScreen(QMainWindow):
@@ -54,6 +55,8 @@ class ReadjustmentScreen(QMainWindow):
         self.category_line.setText("")
         self.subcategory_line.setText("")
         self.description_line.setText("")
+        self.tags_line.setText("")
+        self.tags_line_simple.setText("")
         self.status_label.setText("")
 
     def more_button(self, i: int):
@@ -64,6 +67,7 @@ class ReadjustmentScreen(QMainWindow):
         else:
             self.readjustment_stacked_widget.setCurrentIndex(1)
             self.quantity_line.setText("")
+            self.tags_line_simple.setText("")
             self.status_label.setText("")
 
     def set_account_info(self) -> None:
@@ -134,18 +138,28 @@ class ReadjustmentScreen(QMainWindow):
     def save(self):
         """Saves the new total value of the account."""
         if self.quantity_line_2.text() != "":
+            # Get and clean tags from full mode
+            tags_text = self.tags_line.text()
+            cleaned_tags = clean_tags(tags_text)
+
             self.more_data = {
                 "category": self.category_line.text(),
                 "subcategory": self.subcategory_line.text(),
                 "description": self.description_line.text(),
+                "tags": cleaned_tags,
             }
             value = self.quantity_line_2.text()
 
         elif self.quantity_line.text() != "":
+            # Get and clean tags from simple mode
+            tags_text = self.tags_line_simple.text()
+            cleaned_tags = clean_tags(tags_text)
+
             self.more_data = {
                 "category": "Readjustment",
                 "subcategory": "Readjustment",
                 "Description": "Readjustment",
+                "tags": cleaned_tags,
             }
             value = self.quantity_line.text()
 

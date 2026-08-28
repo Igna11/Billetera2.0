@@ -226,6 +226,36 @@ border-radius:5px;
              </widget>
             </item>
             <item>
+             <widget class="QLabel" name="tags_label">
+              <property name="font">
+               <font>
+                <pointsize>8</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Tags (comma-separated)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="tags_line">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>40</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">background-color: rgb(255, 255, 255);
+border-radius:5px;
+</string>
+              </property>
+              <property name="placeholderText">
+               <string>Tags (e.g., savings, emergency)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
              <spacer name="data_verticalSpacer">
               <property name="orientation">
                <enum>Qt::Vertical</enum>

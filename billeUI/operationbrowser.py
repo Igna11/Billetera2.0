@@ -29,8 +29,37 @@ from src.ophandlers.deletehandler import DeletionHandler
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
 from billeUI import UISPATH, operationscreen, currency_format, animatedlabel, headerfiltermixin
+from billeUI.taglabel import TagContainer
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
+
+
+def clean_tags(tags: str) -> tuple | None:
+    """
+    Clean up tag string by removing empty segments and extra spaces.
+
+    Args:
+        tags: Raw tag string (e.g., "hi,,yes, , no")
+
+    Returns:
+        Cleaned tag tuple (e.g., ("hi", "yes", "no")) or None if empty
+
+    Examples:
+        "hi,,yes, , no" -> ("hi", "yes", "no")
+        "  tag1  ,  tag2  " -> ("tag1", "tag2")
+        "" -> None
+        "single" -> ("single",)
+    """
+    if not tags:
+        return None
+
+    # Split by comma and strip whitespace from each segment
+    segments = [tag.strip() for tag in tags.split(",")]
+
+    # Filter out empty segments
+    clean_segments = tuple([tag for tag in segments if tag])
+
+    return clean_segments if clean_segments else None
 
 
 class HeaderFilter(headerfiltermixin.HeaderFilterMixin):
@@ -217,7 +246,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         except Exception:
             self.groups_list = []
 
-        self.column_widths = [135, 100, 90, 90, 100, 130, 400, 150, 40]
+        self.column_widths = [135, 100, 90, 90, 100, 130, 400, 150, 200, 40]
         self.headers_list = [
             "Date & Time",
             "Cumulatives",
@@ -227,6 +256,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             "Subcategory",
             "Description",
             "Group",
+            "Tags",
             "Select",
         ]
 
@@ -260,7 +290,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         # Filters
         self.init_header_filter(
             self.operation_table_widget,
-            filterable_columns=([3, 4, 5, 7] if self.accounts_comboBox.currentText != "All" else [3, 4, 5, 7, 8]),
+            filterable_columns=([3, 4, 5, 7, 8] if self.accounts_comboBox.currentText != "All" else [3, 4, 5, 7, 8, 9]),
             operations_list=self.filter_operations(self.operations_list),
         )
         self.set_filter_callback(lambda: self.set_table_data(self.accounts_comboBox.currentIndex()))
@@ -287,6 +317,16 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         if "Account Name" in self.headers_list:
             self.column_widths.pop(-2)
             self.headers_list.remove("Account Name")
+
+    def add_tags_column(self) -> None:
+        if "Tags" not in self.headers_list:
+            self.column_widths.insert(-1, 200)
+            self.headers_list.insert(-1, "Tags")
+
+    def remove_tags_column(self) -> None:
+        if "Tags" in self.headers_list:
+            self.column_widths.pop(-2)
+            self.headers_list.remove("Tags")
 
     def view_all_operations(self) -> None:
         self.add_account_column()
@@ -436,6 +476,12 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             group_item.setData(QtCore.Qt.UserRole, operation.group_id)  # Store group_id for later use
             items.append(group_item)
 
+            # Add tags as text for now (will be displayed as TagContainer later)
+            tags_text = ",".join(operation.tags) if operation.tags else ""
+            tags_item = QtWidgets.QTableWidgetItem(tags_text)
+            tags_item.setData(QtCore.Qt.UserRole, operation.tags)  # Store tags tuple for later use
+            items.append(tags_item)
+
             if self.accounts_comboBox.currentText() == "All":
                 items.insert(len(items), QtWidgets.QTableWidgetItem(operation.account_name))
 
@@ -479,6 +525,19 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                     value = operation.subcategory
                 elif col == 7:
                     value = operation.account_name
+                elif col == 8:
+                    # For tags, check if any of the operation's tags match any of the filter values
+                    if operation.tags:
+                        # Convert operation tags tuple to set for easier comparison
+                        op_tags_set = set(operation.tags)
+                        # Check if any operation tag is in the filter values
+                        if not any(tag in vals for tag in op_tags_set):
+                            passed = False
+                            break
+                    else:
+                        # Operation has no tags, filter it out if tags are being filtered
+                        passed = False
+                        break
                 if value not in vals:
                     passed = False
                     break
@@ -488,7 +547,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
     def cell_change(self, row, column) -> None:
         """detects when a cell in a row has a change"""
-        checkbox_column: int = 8
+        checkbox_column: int = 9
         if column != checkbox_column:
             self.operation_table_widget.item(row, column)
             self.rows_changed.add(row)
@@ -505,6 +564,11 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             original_op = GetOperationByIDQuery(
                 user_id=user_id, account_id=account_id, operation_id=operation_id
             ).execute()
+
+            # Get tags from the tags column (column 8)
+            tags_text = self.operation_table_widget.item(row_idx, 8).text()
+            cleaned_tags = clean_tags(tags_text)
+
             # dictionary to create the OperationHandler object
             row_data = {
                 "user_id": user_id,
@@ -526,6 +590,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                 "group_id": self.operation_table_widget.item(row_idx, 7).data(
                     QtCore.Qt.UserRole
                 ),  # Get the edited group_id
+                "tags": cleaned_tags,  # Add cleaned tags
             }
 
             edited_op = OperationHandler(**row_data)

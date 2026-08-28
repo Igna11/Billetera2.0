@@ -42,7 +42,7 @@
        </item>
        <item>
         <widget class="QWidget" name="main_widget" native="true">
-         <layout class="QHBoxLayout" name="horizontalLayout" stretch="2,1">
+         <layout class="QHBoxLayout" name="horizontalLayout" stretch="5,0,1">
           <item>
            <layout class="QVBoxLayout" name="data_verticalLayout">
             <property name="spacing">
@@ -245,7 +245,20 @@ border-radius:5px;
            </layout>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="acc_verticalLayout" stretch="0,0,0,0,0,0,0,0">
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="acc_verticalLayout" stretch="0,0,0,0,0,0,0,0,0,0,0">
             <property name="spacing">
              <number>5</number>
             </property>
@@ -365,6 +378,57 @@ border-radius:5px;
               </property>
               <property name="editable">
                <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="tags_label">
+              <property name="font">
+               <font>
+                <pointsize>8</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Tags (comma-separated)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="tags_line">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>20</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>9</pointsize>
+               </font>
+              </property>
+              <property name="toolTip">
+               <string/>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">background-color: rgb(255, 255, 255);
+border-radius:5px;
+                                                            </string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="frame">
+               <bool>false</bool>
+              </property>
+              <property name="placeholderText">
+               <string>Tags (e.g., food, urgent, work)</string>
               </property>
              </widget>
             </item>

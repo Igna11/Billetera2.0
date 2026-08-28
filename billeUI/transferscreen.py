@@ -23,6 +23,7 @@ from src.ophandlers.transferhandler import (
 )
 
 from billeUI import UISPATH, operationscreen, animatedlabel
+from billeUI.operationbrowser import clean_tags
 
 
 class TransferScreen(QMainWindow):
@@ -152,6 +153,11 @@ class TransferScreen(QMainWindow):
     def save(self):
         """Function called by the save_button to perform the transfer."""
         dttime = self.get_date_time()
+
+        # Get and clean tags
+        tags_text = self.tags_line.text()
+        cleaned_tags = clean_tags(tags_text)
+
         try:
             value = Decimal(self.quantity_line.text())
             transfer = TransferHandler(user_id=self.widget.user_object.user_id, amount=value)
@@ -169,6 +175,10 @@ class TransferScreen(QMainWindow):
             else:
                 trin.description = f"Transferencia de {self.origin_account_object.account_name}"
                 trout.description = f"Transferencia a {self.destination_account_object.account_name}"
+
+            # Add tags to both transfer operations
+            trin.tags = cleaned_tags
+            trout.tags = cleaned_tags
 
             transfer.create_transfer(transfer_object_in=trin, transfer_object_out=trout)
 
