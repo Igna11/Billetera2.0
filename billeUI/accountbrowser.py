@@ -67,6 +67,7 @@ def clean_tags(tags: str) -> tuple | None:
 class AccountRow(QWidget):
 
     account_modified = pyqtSignal(str, str, tuple, bool)
+    account_deleted = pyqtSignal(str)  # Signal when account is deleted
 
     def __init__(self, account: Accounts, parent=None):
         super().__init__(parent)
@@ -245,6 +246,8 @@ class AccountRow(QWidget):
             parent_layout.removeWidget(self)
             self.setParent(None)
             self.deleteLater()
+            # Emit signal to notify parent
+            self.account_deleted.emit(self.account_id)
 
     def enable_n_disable_account(self) -> None:
         if self.account.is_active:
@@ -301,6 +304,7 @@ class AccountBrowser(QMainWindow):
 
         self.account_changed = set()
         self.acc_row_list = []
+        self.all_accounts = []  # Store all accounts for search functionality
 
         self.save_changes_button.setEnabled(False)
         self.save_changes_button.clicked.connect(self.save_account_changes)
@@ -309,15 +313,18 @@ class AccountBrowser(QMainWindow):
         self.accounts_object.sort(
             key=lambda acc: (acc.is_active, acc.account_total), reverse=True
         )  # Sort first the active accounts
+        self.all_accounts = self.accounts_object  # Store all accounts
 
         self.back_button.clicked.connect(self.back)
+
+        # Search functionality
+        self.search_line_edit = self.findChild(QLineEdit, "search_line_edit")
+        self.search_line_edit.textChanged.connect(self.filter_accounts)
 
         self.scroll_content = self.findChild(QWidget, "scrollAreaWidgetContents")
         self.scroll_layout = self.scroll_content.layout()
 
-        for account in self.accounts_object:
-            row = self.add_account(account)
-            self.acc_row_list.append(row)
+        self.refresh_accounts_display()
 
     def save_account_changes(self) -> None:
         """loops through all acc_ids in the account_changed set and saves the changes into the db"""
@@ -347,11 +354,51 @@ class AccountBrowser(QMainWindow):
             except InvalidAccountNameError:
                 animatedlabel.AnimatedLabel("Invalid name!", message_type="error").display()
 
+        # Update all_accounts to reflect changes including tag changes
+        self.all_accounts = ListAccountsQuery(user_id=self.widget.user_object.user_id).execute()
+        self.all_accounts.sort(key=lambda acc: (acc.is_active, acc.account_total), reverse=True)
+        # Re-apply current search filter to reflect name and tag changes
+        self.filter_accounts(self.search_line_edit.text())
+
     def add_account(self, account: Accounts) -> AccountRow:
         row = AccountRow(account)
         row.account_modified.connect(self.handle_account_modified)
+        row.account_deleted.connect(self.handle_account_deleted)
         self.scroll_layout.addWidget(row)
         return row
+
+    def refresh_accounts_display(self) -> None:
+        """Clear and refresh the accounts display"""
+        # Clear existing rows
+        for i in reversed(range(self.scroll_layout.count())):
+            child = self.scroll_layout.itemAt(i).widget()
+            if child:
+                child.setParent(None)
+
+        self.acc_row_list.clear()
+
+        # Add accounts
+        for account in self.accounts_object:
+            row = self.add_account(account)
+            self.acc_row_list.append(row)
+
+    def filter_accounts(self, search_text: str) -> None:
+        """Filter accounts based on search text (case insensitive) - searches both name and tags"""
+        search_text = search_text.lower().strip()
+
+        if not search_text:
+            # Show all accounts
+            self.accounts_object = self.all_accounts
+        else:
+            # Filter accounts by name or tags (case insensitive)
+            self.accounts_object = [
+                account
+                for account in self.all_accounts
+                if search_text in account.account_name.lower()
+                or (account.tags and any(search_text in tag.lower() for tag in account.tags))
+            ]
+
+        self.refresh_accounts_display()
 
     def handle_account_modified(self, account_id: str, new_acc_name: str, new_acc_tags: str, is_modified: bool) -> None:
         if is_modified:
@@ -359,6 +406,15 @@ class AccountBrowser(QMainWindow):
         else:
             self.account_changed.discard(account_id)
         self.save_changes_button.setEnabled(len(self.account_changed) > 0)
+
+    def handle_account_deleted(self, account_id: str) -> None:
+        """Handle account deletion by updating the all_accounts list"""
+        # Remove the deleted account from all_accounts
+        self.all_accounts = [acc for acc in self.all_accounts if acc.account_id != account_id]
+        # Remove from acc_row_list
+        self.acc_row_list = [row for row in self.acc_row_list if row.account_id != account_id]
+        # Re-apply current search filter
+        self.filter_accounts(self.search_line_edit.text())
 
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""
