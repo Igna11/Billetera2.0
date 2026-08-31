@@ -29,7 +29,6 @@ from src.ophandlers.deletehandler import DeletionHandler
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
 from billeUI import UISPATH, operationscreen, currency_format, animatedlabel, headerfiltermixin
-from billeUI.taglabel import TagContainer
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
 
@@ -240,11 +239,14 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
         # Load groups for the combo box delegate
         self.groups_list = []
+        self.groups_dict = {}
         try:
             groups = ListGroupsQuery(user_id=self.widget.user_object.user_id, status="open").execute()
             self.groups_list = [(group.group_id, group.group_name) for group in groups]
+            self.groups_dict = {group_id: group_name for group_id, group_name in self.groups_list}
         except Exception:
             self.groups_list = []
+            self.groups_dict = {}
 
         self.column_widths = [135, 100, 90, 90, 100, 130, 400, 150, 200, 40]
         self.headers_list = [
@@ -288,10 +290,15 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.accounts_comboBox.currentIndexChanged.connect(self.set_table_data)
 
         # Filters
+        # Create groups dictionary for header filter (group_id -> group_name)
+        groups_dict = {group_id: group_name for group_id, group_name in self.groups_list}
         self.init_header_filter(
             self.operation_table_widget,
-            filterable_columns=([3, 4, 5, 7, 8] if self.accounts_comboBox.currentText != "All" else [3, 4, 5, 7, 8, 9]),
+            filterable_columns=(
+                [3, 4, 5, 7, 8] if self.accounts_comboBox.currentText() != "All" else [3, 4, 5, 7, 8, 9]
+            ),
             operations_list=self.filter_operations(self.operations_list),
+            groups_dict=groups_dict,
         )
         self.set_filter_callback(lambda: self.set_table_data(self.accounts_comboBox.currentIndex()))
 
@@ -404,6 +411,9 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
         filtered_operations_list = self.filter_operations(self.operations_list)
 
+        # Update the header filter mixin with the current operations list
+        self.update_operations_list(self.operations_list)
+
         if self.operations_list and filtered_operations_list:
             pagination = 100
 
@@ -513,6 +523,9 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         if not hasattr(self, "active_filters") or not self.active_filters:
             return operations_list
         filtered = []
+        # Create groups dictionary for group name lookup
+        groups_dict = {group_id: group_name for group_id, group_name in self.groups_list}
+
         for operation in operations_list:
             passed = True
             for col, vals in self.active_filters.items():
@@ -524,20 +537,25 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                 elif col == 5:
                     value = operation.subcategory
                 elif col == 7:
-                    value = operation.account_name
+                    # Group column - use group_name for comparison (filter uses group names)
+                    if operation.group_id:
+                        value = groups_dict.get(operation.group_id, operation.group_id)
+                    else:
+                        value = "N/A"
                 elif col == 8:
-                    # For tags, check if any of the operation's tags match any of the filter values
+                    # For tags, check if any of the operation's tags match any of the filter values (case insensitive)
                     if operation.tags:
-                        # Convert operation tags tuple to set for easier comparison
-                        op_tags_set = set(operation.tags)
-                        # Check if any operation tag is in the filter values
-                        if not any(tag in vals for tag in op_tags_set):
+                        # Convert filter values to lowercase for case-insensitive comparison
+                        vals_lower = {val.lower() for val in vals}
+                        # Check if any operation tag (lowercase) is in the filter values
+                        if not any(tag.lower() in vals_lower for tag in operation.tags):
                             passed = False
                             break
                     else:
                         # Operation has no tags, filter it out if tags are being filtered
                         passed = False
                         break
+                    continue  # Skip the standard value check for tags
                 if value not in vals:
                     passed = False
                     break
@@ -690,15 +708,22 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
             QtWidgets.QApplication.clipboard().setText(text_data)
 
     def refresh_groups_list(self) -> None:
-        """Refresh the groups list for the combo box delegate"""
+        """Refresh the groups list for the combo box delegate and header filter"""
         try:
             groups = ListGroupsQuery(user_id=self.widget.user_object.user_id, status="open").execute()
             self.groups_list = [(group.group_id, group.group_name) for group in groups]
             # Update the delegate with the new groups list
             self.group_delegate.groups_list = self.groups_list
+            # Update the header filter groups dictionary
+            groups_dict = {group_id: group_name for group_id, group_name in self.groups_list}
+            self.groups_dict = groups_dict
+            # Update the header filter mixin with the new groups dictionary
+            self.update_groups_dict(groups_dict)
         except Exception:
             self.groups_list = []
             self.group_delegate.groups_list = []
+            self.groups_dict = {}
+            self.update_groups_dict({})
 
     def back(self) -> None:
         """Returns to the OperationScreen Menu"""

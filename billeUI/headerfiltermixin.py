@@ -8,16 +8,18 @@ from PyQt5 import QtWidgets, QtGui
 
 
 class HeaderFilterMixin:
-    def init_header_filter(self, table_widget, filterable_columns, operations_list):
+    def init_header_filter(self, table_widget, filterable_columns, operations_list, groups_dict=None):
         """
         Initialize the filter system for headers:
         :param table_widget: QTableWidget where filters are being applied.
         :param filterable_columns: List of column indices to be filtered.
+        :param groups_dict: Optional dictionary mapping group_id to group_name for column 7.
         """
         self.operation_table_widget = table_widget
         self.operations_list = operations_list
         self.filterable_columns = filterable_columns
         self.active_filters = {}
+        self.groups_dict = groups_dict or {}
 
         header = self.operation_table_widget.horizontalHeader()
         header.sectionClicked.connect(self._handle_header_click)
@@ -36,6 +38,18 @@ class HeaderFilterMixin:
                 unique_values.add(operation.category)
             elif column_index == 5:
                 unique_values.add(operation.subcategory)
+            elif column_index == 7:
+                # Group column - get group name for display, group_id for filtering
+                if operation.group_id:
+                    group_name = self.groups_dict.get(operation.group_id, operation.group_id)
+                    unique_values.add(group_name)
+                else:
+                    unique_values.add("N/A")
+            elif column_index == 8:
+                # Tags column - flatten all tags from all operations (case insensitive display, original case for display)
+                if operation.tags:
+                    # Store tags in their original case for display
+                    unique_values.update(operation.tags)
 
         # for row in range(self.operation_table_widget.rowCount()):
         #     item = self.operation_table_widget.item(row, column_index)
@@ -101,6 +115,27 @@ class HeaderFilterMixin:
                     val = op.category
                 elif col == 5:
                     val = op.subcategory
+                elif col == 7:
+                    # Group column - convert group_name to group_id for comparison
+                    if op.group_id:
+                        group_name = self.groups_dict.get(op.group_id, op.group_id)
+                        val = group_name
+                    else:
+                        val = "N/A"
+                elif col == 8:
+                    # Tags column - check if any tag matches (case insensitive)
+                    if op.tags:
+                        # Convert allowed values to lowercase for case-insensitive comparison
+                        allowed_vals_lower = {val.lower() for val in allowed_vals}
+                        # Check if any operation tag (lowercase) is in the allowed values
+                        if not any(tag.lower() in allowed_vals_lower for tag in op.tags):
+                            ok = False
+                            break
+                    else:
+                        # Operation has no tags, filter it out if tags are being filtered
+                        ok = False
+                        break
+                    continue  # Skip the standard val check for tags
                 if val not in allowed_vals:
                     ok = False
                     break
@@ -132,3 +167,11 @@ class HeaderFilterMixin:
     def clear_all_filters(self):
         self.active_filters.clear()
         self._apply_active_filters()
+
+    def update_groups_dict(self, groups_dict):
+        """Update the groups dictionary for group column filtering"""
+        self.groups_dict = groups_dict
+
+    def update_operations_list(self, operations_list):
+        """Update the operations list for filtering"""
+        self.operations_list = operations_list
