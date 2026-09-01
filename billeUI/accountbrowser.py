@@ -349,6 +349,8 @@ class AccountBrowser(QMainWindow):
 
                 animatedlabel.AnimatedLabel("Changes saved! ✅", message_type="success").display()
                 self.save_changes_button.setEnabled(False)
+                # reset self.account_changed => bug fix
+                self.account_changed = set()
             except sqlite3.IntegrityError:
                 animatedlabel.AnimatedLabel("Duplicated name + currency!", message_type="error").display()
             except sqlite3.OperationalError:
