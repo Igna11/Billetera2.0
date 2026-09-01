@@ -17,8 +17,8 @@ from billeUI import currency_format
 
 class BalanceChartView(QChartView):
     """
-    Custom chart view that handles hover events for the trend line.
-    Shows tooltips with date and balance information when hovering over the trend line.
+    Custom chart view that handles hover events for individual bars.
+    Shows tooltips with date and balance information when hovering over specific bars.
     """
 
     def __init__(self, chart, parent=None):
@@ -26,6 +26,7 @@ class BalanceChartView(QChartView):
         self.setMouseTracking(True)  # Enable mouse tracking for hover events
         self.day_labels = []  # Will be set by the chart
         self.total_values = []  # Will be set by the chart
+        self.chart_instance = chart  # Store reference to the chart
 
     def set_tooltip_data(self, day_labels, total_values):
         """Set the data needed for tooltips"""
@@ -33,16 +34,11 @@ class BalanceChartView(QChartView):
         self.total_values = total_values
 
     def mouseMoveEvent(self, event):
-        """Handle mouse move events to show tooltips on trend line hover"""
+        """Handle mouse move events to show tooltips on individual bar hover"""
         super().mouseMoveEvent(event)
 
-        # Only show tooltips for custom ranges (multi-month periods)
-        if not self.day_labels or "-" not in str(self.day_labels[0]):
-            return
-
-        # Get the chart and map coordinates
         chart = self.chart()
-        if not chart:
+        if not chart or not self.day_labels:
             return
 
         # Map mouse position to chart coordinates
@@ -50,19 +46,20 @@ class BalanceChartView(QChartView):
         try:
             chart_pos = chart.mapToValue(pos)
 
-            # Find the closest data point
-            if chart_pos.x() >= 0 and chart_pos.x() < len(self.total_values):
+            # Find the closest data point (X-axis represents the day index)
+            if chart_pos.x() >= 0 and chart_pos.x() < len(self.day_labels):
                 index = int(round(chart_pos.x()))
                 if 0 <= index < len(self.day_labels):
                     day_label = self.day_labels[index]
                     balance = self.total_values[index]
 
-                    # Show tooltip
-                    tooltip_text = f"Date: {day_label}\nBalance: {currency_format(balance)}"
+                    # Show tooltip for the specific bar being hovered
+                    tooltip_text = f"{day_label}\n{currency_format(balance)}"
                     QToolTip.showText(event.globalPos(), tooltip_text, self)
+            else:
+                QToolTip.hideText()
         except:
-            # If coordinate mapping fails, just skip tooltip
-            pass
+            QToolTip.hideText()
 
 
 class MonthlyBalanceChart(QtChart.QChart):
@@ -91,6 +88,7 @@ class MonthlyBalanceChart(QtChart.QChart):
         self.income_series.setBarWidth(1)
         self.expense_series.setBarWidth(1)
         self.total_series.setBarWidth(1.5)
+
         # Create bar sets
         self.income_bar_set = QtChart.QBarSet("Income")
         self.expense_bar_set = QtChart.QBarSet("Expense")
@@ -167,6 +165,9 @@ class MonthlyBalanceChart(QtChart.QChart):
         self.total_bar_set.remove(0, self.total_bar_set.count())
         self.zero_line.clear()
         self.trend_line.clear()
+
+    def hover_labels(self):
+        self.total_series.setLabelsVisible(True)
 
     def update_chart(self, daily_data: List[Dict[str, any]], month: int, year: int) -> None:
         """
