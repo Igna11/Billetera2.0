@@ -112,8 +112,8 @@ class CategoricalPieChart(QtChart.QChart):
         )
 
         for group in data_outer:
-            category = group["category"]
-            cat_total = group["total"]
+            category = group.get("category", "N/A")
+            cat_total = group.get("total", "N/A")
             # base_color = CATEGORY_COLOR_MAP.get(category, QColor("#999999"))
             base_color = categories_colors.get(category, QColor("gray"))
 
