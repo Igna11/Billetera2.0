@@ -214,6 +214,7 @@ class IncomeExpenseScreen(QMainWindow):
                 user_id=self.widget.user_object.user_id, group_name=group_name, group_currency="ARS"
             )
             group.execute()
+            self.refresh_groups_list()
         if popup_message == QMessageBox.No:
             pass
 
