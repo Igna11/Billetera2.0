@@ -334,7 +334,6 @@ class AccountBrowser(QMainWindow):
                 # Convert empty string to ("",) tuple to satisfy validation
                 tags_to_save = row.new_acc_tags if row.new_acc_tags else ("",)
 
-                print(tags_to_save)
                 EditAccountCommand(
                     user_id=self.user_id, account_id=row.account_id, account_name=row.new_acc_name, tags=tags_to_save
                 ).execute()
