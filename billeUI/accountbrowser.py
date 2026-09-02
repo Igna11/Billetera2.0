@@ -331,9 +331,10 @@ class AccountBrowser(QMainWindow):
         row_to_be_saved = [row for row in self.acc_row_list if row.account_id in self.account_changed]
         for row in row_to_be_saved:
             try:
-                # Convert empty string to None to satisfy validation
-                tags_to_save = row.new_acc_tags if row.new_acc_tags else None
+                # Convert empty string to ("",) tuple to satisfy validation
+                tags_to_save = row.new_acc_tags if row.new_acc_tags else ("",)
 
+                print(tags_to_save)
                 EditAccountCommand(
                     user_id=self.user_id, account_id=row.account_id, account_name=row.new_acc_name, tags=tags_to_save
                 ).execute()
