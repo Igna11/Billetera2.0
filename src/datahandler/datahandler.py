@@ -288,8 +288,8 @@ class AccountDataAnalyzer(BaseModel):
             result = [
                 {
                     "day": day,
-                    "income": float(max(Decimal("0"), totals["income"])),
-                    "expense": float(max(Decimal("0"), totals["expense"])),
+                    "income": totals["income"],
+                    "expense": totals["expense"],
                 }
                 for day, totals in sorted(daily_totals.items())
             ]
@@ -308,12 +308,11 @@ class AccountDataAnalyzer(BaseModel):
             result = [
                 {
                     "day": date_str,
-                    "income": float(max(Decimal("0"), totals["income"])),
-                    "expense": float(max(Decimal("0"), totals["expense"])),
+                    "income": totals["income"],
+                    "expense": totals["expense"],
                 }
                 for date_str, totals in sorted(daily_totals.items())
             ]
-
         return result
 
     @classmethod
@@ -356,8 +355,8 @@ class AccountDataAnalyzer(BaseModel):
                 result.append(
                     {
                         "datetime": oper.operation_datetime,
-                        "cumulative": float(oper.cumulative_amount),
-                        "account_name": oper.account_name if hasattr(oper, "account_name") else "",
+                        "cumulative": oper.cumulative_amount,
+                        "account_name": oper.account_name,
                     }
                 )
 
