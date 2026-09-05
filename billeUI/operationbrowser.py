@@ -295,7 +295,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.init_header_filter(
             self.operation_table_widget,
             filterable_columns=(
-                [3, 4, 5, 7, 8] if self.accounts_comboBox.currentText() != "All" else [3, 4, 5, 7, 8, 9]
+                [3, 4, 5, 6, 7, 8] if self.accounts_comboBox.currentText() != "All" else [3, 4, 5, 6, 7, 8, 9]
             ),
             operations_list=self.filter_operations(self.operations_list),
             groups_dict=groups_dict,
@@ -528,25 +528,40 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
         for operation in operations_list:
             passed = True
-            for col, vals in self.active_filters.items():
-                value = None
+            for col, filter_value in self.active_filters.items():
                 if col == 3:
-                    value = operation.operation_type
+                    # Operation type column
+                    if operation.operation_type not in filter_value:
+                        passed = False
+                        break
                 elif col == 4:
-                    value = operation.category
+                    # Category column
+                    if operation.category not in filter_value:
+                        passed = False
+                        break
                 elif col == 5:
-                    value = operation.subcategory
+                    # Subcategory column
+                    if operation.subcategory not in filter_value:
+                        passed = False
+                        break
+                elif col == 6:
+                    # Description column - check if search term is in description (case insensitive)
+                    if not (operation.description and filter_value.lower() in operation.description.lower()):
+                        passed = False
+                        break
                 elif col == 7:
                     # Group column - use group_name for comparison (filter uses group names)
-                    if operation.group_id:
-                        value = groups_dict.get(operation.group_id, operation.group_id)
-                    else:
-                        value = "N/A"
+                    group_name = (
+                        groups_dict.get(operation.group_id, operation.group_id) if operation.group_id else "N/A"
+                    )
+                    if group_name not in filter_value:
+                        passed = False
+                        break
                 elif col == 8:
-                    # For tags, check if any of the operation's tags match any of the filter values (case insensitive)
+                    # Tags column - check if any of the operation's tags match any of the filter values (case insensitive)
                     if operation.tags:
                         # Convert filter values to lowercase for case-insensitive comparison
-                        vals_lower = {val.lower() for val in vals}
+                        vals_lower = {val.lower() for val in filter_value}
                         # Check if any operation tag (lowercase) is in the filter values
                         if not any(tag.lower() in vals_lower for tag in operation.tags):
                             passed = False
@@ -555,10 +570,6 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
                         # Operation has no tags, filter it out if tags are being filtered
                         passed = False
                         break
-                    continue  # Skip the standard value check for tags
-                if value not in vals:
-                    passed = False
-                    break
             if passed:
                 filtered.append(operation)
         return filtered

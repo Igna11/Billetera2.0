@@ -8,6 +8,13 @@ from PyQt5 import QtWidgets, QtGui
 
 
 class HeaderFilterMixin:
+    OPERATION_TYPE_COLUMN = 3
+    CATEGORY_COLUMN = 4
+    SUBCATEGORY_COLUMN = 5
+    DESCRIPTION_COLUMN = 6
+    GROUP_COLUMN = 7
+    TAGS_COLUMN = 8
+
     def init_header_filter(self, table_widget, filterable_columns, operations_list, groups_dict=None):
         """
         Initialize the filter system for headers:
@@ -28,33 +35,30 @@ class HeaderFilterMixin:
         if column_index not in self.filterable_columns:
             return
 
+        # Special handling for description column (column 6) - show search bar instead of checkboxes
+        if column_index == 6:
+            self._show_description_search_menu(column_index)
+            return
+
         unique_values = set()
         filtered_ops = self._filtered_operations_for_column(exclude_col=column_index)
 
         for operation in filtered_ops:
-            if column_index == 3:
+            if column_index == OPERATION_TYPE_COLUMN:
                 unique_values.add(operation.operation_type)
-            elif column_index == 4:
+            elif column_index == CATEGORY_COLUMN:
                 unique_values.add(operation.category)
-            elif column_index == 5:
+            elif column_index == SUBCATEGORY_COLUMN:
                 unique_values.add(operation.subcategory)
-            elif column_index == 7:
-                # Group column - get group name for display, group_id for filtering
+            elif column_index == GROUP_COLUMN:
                 if operation.group_id:
                     group_name = self.groups_dict.get(operation.group_id, operation.group_id)
                     unique_values.add(group_name)
                 else:
                     unique_values.add("N/A")
-            elif column_index == 8:
-                # Tags column - flatten all tags from all operations (case insensitive display, original case for display)
+            elif column_index == TAGS_COLUMN:
                 if operation.tags:
-                    # Store tags in their original case for display
                     unique_values.update(operation.tags)
-
-        # for row in range(self.operation_table_widget.rowCount()):
-        #     item = self.operation_table_widget.item(row, column_index)
-        #     if item:
-        #         unique_values.add(item.text())
 
         current_filters = self.active_filters.get(column_index, set())
 
@@ -97,48 +101,110 @@ class HeaderFilterMixin:
         # Show menu
         menu.exec_(QtGui.QCursor.pos())
 
+    def _show_description_search_menu(self, column_index):
+        """Show a search bar menu for the description column"""
+        current_search = self.active_filters.get(column_index, "")
+
+        # Menu creation
+        menu = QtWidgets.QMenu(self.operation_table_widget)
+
+        # Search input field
+        search_widget = QtWidgets.QWidget()
+        search_layout = QtWidgets.QVBoxLayout()
+        search_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Label
+        label = QtWidgets.QLabel("Filter by description:")
+        search_layout.addWidget(label)
+
+        # Search input
+        search_input = QtWidgets.QLineEdit()
+        search_input.setPlaceholderText("Enter search term...")
+        search_input.setText(current_search)
+        search_layout.addWidget(search_input)
+
+        # Buttons
+        btn_apply = QtWidgets.QPushButton("✅ Apply")
+        btn_clear = QtWidgets.QPushButton("❌ Clear")
+
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addWidget(btn_apply)
+        button_layout.addWidget(btn_clear)
+        search_layout.addLayout(button_layout)
+
+        search_widget.setLayout(search_layout)
+
+        widget_action = QtWidgets.QWidgetAction(menu)
+        widget_action.setDefaultWidget(search_widget)
+        menu.addAction(widget_action)
+
+        # Signals
+        btn_apply.clicked.connect(lambda: self._apply_description_filter(menu, column_index, search_input))
+        btn_clear.clicked.connect(lambda: self._clear_description_filter(menu, column_index, search_input))
+
+        # Focus on search input when menu is shown
+        menu.aboutToShow.connect(lambda: search_input.setFocus())
+
+        # Show menu
+        menu.exec_(QtGui.QCursor.pos())
+
+    def _apply_description_filter(self, menu, column_index, search_input):
+        """Apply the description search filter"""
+        search_term = search_input.text().strip()
+        if search_term:
+            self.active_filters[column_index] = search_term
+        else:
+            self.active_filters.pop(column_index, None)
+        menu.close()
+        self._apply_active_filters()
+
+    def _clear_description_filter(self, menu, column_index, search_input):
+        """Clear the description search filter"""
+        search_input.clear()
+        self.active_filters.pop(column_index, None)
+        menu.close()
+        self._apply_active_filters()
+
     def _filtered_operations_for_column(self, exclude_col=None):
         """
-        Devuelve la lista de operaciones filtradas por los filtros activos,
-        exceptuando el filtro de la columna exclude_col (si existe).
+        Returns the list of filtered operations by the active filters, except the exclude_col filter (if exists)
         """
         filtered = []
         for op in self.operations_list:
             ok = True
-            for col, allowed_vals in self.active_filters.items():
+            for col, filter_value in self.active_filters.items():
                 if exclude_col is not None and col == exclude_col:
                     continue
-                val = None
-                if col == 3:
-                    val = op.operation_type
-                elif col == 4:
-                    val = op.category
-                elif col == 5:
-                    val = op.subcategory
-                elif col == 7:
-                    # Group column - convert group_name to group_id for comparison
-                    if op.group_id:
-                        group_name = self.groups_dict.get(op.group_id, op.group_id)
-                        val = group_name
-                    else:
-                        val = "N/A"
-                elif col == 8:
-                    # Tags column - check if any tag matches (case insensitive)
+                if col == OPERATION_TYPE_COLUMN:
+                    if op.operation_type not in filter_value:
+                        ok = False
+                        break
+                elif col == CATEGORY_COLUMN:
+                    if op.category not in filter_value:
+                        ok = False
+                        break
+                elif col == SUBCATEGORY_COLUMN:
+                    if op.subcategory not in filter_value:
+                        ok = False
+                        break
+                elif col == DESCRIPTION_COLUMN:
+                    if not (op.description and filter_value.lower() in op.description.lower()):
+                        ok = False
+                        break
+                elif col == GROUP_COLUMN:
+                    group_name = self.groups_dict.get(op.group_id, op.group_id) if op.group_id else "N/A"
+                    if group_name not in filter_value:
+                        ok = False
+                        break
+                elif col == TAGS_COLUMN:
                     if op.tags:
-                        # Convert allowed values to lowercase for case-insensitive comparison
-                        allowed_vals_lower = {val.lower() for val in allowed_vals}
-                        # Check if any operation tag (lowercase) is in the allowed values
+                        allowed_vals_lower = {val.lower() for val in filter_value}
                         if not any(tag.lower() in allowed_vals_lower for tag in op.tags):
                             ok = False
                             break
                     else:
-                        # Operation has no tags, filter it out if tags are being filtered
                         ok = False
                         break
-                    continue  # Skip the standard val check for tags
-                if val not in allowed_vals:
-                    ok = False
-                    break
             if ok:
                 filtered.append(op)
         return filtered
