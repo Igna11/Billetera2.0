@@ -43,7 +43,7 @@ class OperationHandler(Operations):
             self.operation_type = "expense"
             self.tags = ("Readjustment", "Negative")
         elif amount == 0:
-            pass
+            self.amount = 0  # forces the raise of pydantic validationError to avoid readjustments with 0
         elif amount > 0:
             self.amount = amount
             self.operation_type = "income"
