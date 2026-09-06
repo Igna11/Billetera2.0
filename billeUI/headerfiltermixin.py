@@ -44,19 +44,19 @@ class HeaderFilterMixin:
         filtered_ops = self._filtered_operations_for_column(exclude_col=column_index)
 
         for operation in filtered_ops:
-            if column_index == OPERATION_TYPE_COLUMN:
+            if column_index == self.OPERATION_TYPE_COLUMN:
                 unique_values.add(operation.operation_type)
-            elif column_index == CATEGORY_COLUMN:
+            elif column_index == self.CATEGORY_COLUMN:
                 unique_values.add(operation.category)
-            elif column_index == SUBCATEGORY_COLUMN:
+            elif column_index == self.SUBCATEGORY_COLUMN:
                 unique_values.add(operation.subcategory)
-            elif column_index == GROUP_COLUMN:
+            elif column_index == self.GROUP_COLUMN:
                 if operation.group_id:
                     group_name = self.groups_dict.get(operation.group_id, operation.group_id)
                     unique_values.add(group_name)
                 else:
                     unique_values.add("N/A")
-            elif column_index == TAGS_COLUMN:
+            elif column_index == self.TAGS_COLUMN:
                 if operation.tags:
                     unique_values.update(operation.tags)
 
@@ -175,28 +175,28 @@ class HeaderFilterMixin:
             for col, filter_value in self.active_filters.items():
                 if exclude_col is not None and col == exclude_col:
                     continue
-                if col == OPERATION_TYPE_COLUMN:
+                if col == self.OPERATION_TYPE_COLUMN:
                     if op.operation_type not in filter_value:
                         ok = False
                         break
-                elif col == CATEGORY_COLUMN:
+                elif col == self.CATEGORY_COLUMN:
                     if op.category not in filter_value:
                         ok = False
                         break
-                elif col == SUBCATEGORY_COLUMN:
+                elif col == self.SUBCATEGORY_COLUMN:
                     if op.subcategory not in filter_value:
                         ok = False
                         break
-                elif col == DESCRIPTION_COLUMN:
+                elif col == self.DESCRIPTION_COLUMN:
                     if not (op.description and filter_value.lower() in op.description.lower()):
                         ok = False
                         break
-                elif col == GROUP_COLUMN:
+                elif col == self.GROUP_COLUMN:
                     group_name = self.groups_dict.get(op.group_id, op.group_id) if op.group_id else "N/A"
                     if group_name not in filter_value:
                         ok = False
                         break
-                elif col == TAGS_COLUMN:
+                elif col == self.TAGS_COLUMN:
                     if op.tags:
                         allowed_vals_lower = {val.lower() for val in filter_value}
                         if not any(tag.lower() in allowed_vals_lower for tag in op.tags):
