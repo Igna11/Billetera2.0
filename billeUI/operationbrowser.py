@@ -295,7 +295,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.init_header_filter(
             self.operation_table_widget,
             filterable_columns=(
-                [3, 4, 5, 6, 7, 8] if self.accounts_comboBox.currentText() != "All" else [3, 4, 5, 6, 7, 8, 9]
+                [0, 3, 4, 5, 6, 7, 8] if self.accounts_comboBox.currentText() != "All" else [0, 3, 4, 5, 6, 7, 8, 9]
             ),
             operations_list=self.filter_operations(self.operations_list),
             groups_dict=groups_dict,
@@ -529,7 +529,16 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         for operation in operations_list:
             passed = True
             for col, filter_value in self.active_filters.items():
-                if col == 3:
+                if col == 0:
+                    # Date column - check if operation date is within range
+                    if isinstance(filter_value, dict) and "initial" in filter_value and "final" in filter_value:
+                        op_date = operation.operation_datetime.date()
+                        initial_date = filter_value["initial"]
+                        final_date = filter_value["final"]
+                        if not (initial_date <= op_date <= final_date):
+                            passed = False
+                            break
+                elif col == 3:
                     # Operation type column
                     if operation.operation_type not in filter_value:
                         passed = False
@@ -576,7 +585,7 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
 
     def cell_change(self, row, column) -> None:
         """detects when a cell in a row has a change"""
-        checkbox_column: int = 9
+        checkbox_column: int = self.operation_table_widget.columnCount() - 1
         if column != checkbox_column:
             self.operation_table_widget.item(row, column)
             self.rows_changed.add(row)

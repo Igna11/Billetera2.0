@@ -5,6 +5,7 @@ created on 23/07/2023 16:00 by chatgpt
 """
 
 from PyQt5 import QtWidgets, QtGui
+from datetime import datetime
 
 
 class HeaderFilterMixin:
@@ -14,6 +15,7 @@ class HeaderFilterMixin:
     DESCRIPTION_COLUMN = 6
     GROUP_COLUMN = 7
     TAGS_COLUMN = 8
+    DATE_COLUMN = 0
 
     def init_header_filter(self, table_widget, filterable_columns, operations_list, groups_dict=None):
         """
@@ -38,6 +40,11 @@ class HeaderFilterMixin:
         # Special handling for description column (column 6) - show search bar instead of checkboxes
         if column_index == 6:
             self._show_description_search_menu(column_index)
+            return
+
+        # Special handling for date column (column 0) - show date range picker
+        if column_index == 0:
+            self._show_date_filter_menu(column_index)
             return
 
         unique_values = set()
@@ -165,6 +172,79 @@ class HeaderFilterMixin:
         menu.close()
         self._apply_active_filters()
 
+    def _show_date_filter_menu(self, column_index):
+        """Show a date range picker menu for the date column"""
+        # Import here to avoid circular imports
+        from billeUI.calendardialog import CalendarDialog
+
+        current_filter = self.active_filters.get(column_index, None)
+
+        # Menu creation
+        menu = QtWidgets.QMenu(self.operation_table_widget)
+
+        # Info label
+        info_widget = QtWidgets.QWidget()
+        info_layout = QtWidgets.QVBoxLayout()
+        info_layout.setContentsMargins(5, 5, 5, 5)
+
+        label = QtWidgets.QLabel("Filter by date range:")
+        info_layout.addWidget(label)
+
+        # Show current filter if exists
+        if current_filter:
+            status_label = QtWidgets.QLabel(f"Current: {current_filter['initial']} to {current_filter['final']}")
+            status_label.setStyleSheet("color: #007bff; font-weight: bold;")
+            info_layout.addWidget(status_label)
+        else:
+            status_label = QtWidgets.QLabel("No filter applied")
+            status_label.setStyleSheet("color: gray;")
+            info_layout.addWidget(status_label)
+
+        info_widget.setLayout(info_layout)
+
+        widget_action = QtWidgets.QWidgetAction(menu)
+        widget_action.setDefaultWidget(info_widget)
+        menu.addAction(widget_action)
+
+        # Buttons
+        btn_set = QtWidgets.QPushButton("📅 Set Date Range")
+        btn_clear = QtWidgets.QPushButton("❌ Clear Filter")
+
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addWidget(btn_set)
+        button_layout.addWidget(btn_clear)
+        info_layout.addLayout(button_layout)
+
+        # Signals
+        btn_set.clicked.connect(lambda: self._apply_date_filter_via_calendar(menu, column_index))
+        btn_clear.clicked.connect(lambda: self._clear_date_filter(menu, column_index))
+
+        # Show menu
+        menu.exec_(QtGui.QCursor.pos())
+
+    def _apply_date_filter_via_calendar(self, menu, column_index):
+        """Show calendar dialog to select date range and apply filter"""
+        from billeUI.calendardialog import CalendarDialog
+
+        # Close the menu first
+        menu.close()
+
+        # Show calendar dialog
+        calendar_dialog = CalendarDialog()
+        calendar_dialog.select_button.clicked.connect(calendar_dialog.get_date_range)
+        calendar_dialog.exec_()
+
+        if calendar_dialog.initial_d and calendar_dialog.final_d:
+            # Store the date range as a dictionary
+            self.active_filters[column_index] = {"initial": calendar_dialog.initial_d, "final": calendar_dialog.final_d}
+            self._apply_active_filters()
+
+    def _clear_date_filter(self, menu, column_index):
+        """Clear the date filter"""
+        self.active_filters.pop(column_index, None)
+        menu.close()
+        self._apply_active_filters()
+
     def _filtered_operations_for_column(self, exclude_col=None):
         """
         Returns the list of filtered operations by the active filters, except the exclude_col filter (if exists)
@@ -175,7 +255,16 @@ class HeaderFilterMixin:
             for col, filter_value in self.active_filters.items():
                 if exclude_col is not None and col == exclude_col:
                     continue
-                if col == self.OPERATION_TYPE_COLUMN:
+                if col == self.DATE_COLUMN:
+                    # Date column filtering - check if operation date is within range
+                    if isinstance(filter_value, dict) and "initial" in filter_value and "final" in filter_value:
+                        op_date = op.operation_datetime.date()
+                        initial_date = filter_value["initial"]
+                        final_date = filter_value["final"]
+                        if not (initial_date <= op_date <= final_date):
+                            ok = False
+                            break
+                elif col == self.OPERATION_TYPE_COLUMN:
                     if op.operation_type not in filter_value:
                         ok = False
                         break
