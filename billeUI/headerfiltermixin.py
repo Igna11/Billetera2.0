@@ -4,7 +4,7 @@
 created on 23/07/2023 16:00 by chatgpt
 """
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtGui, QtCore
 from datetime import datetime
 
 
@@ -47,25 +47,18 @@ class HeaderFilterMixin:
             self._show_date_filter_menu(column_index)
             return
 
+        # Special handling for searchable multi-select columns (category, subcategory, tags, groups)
+        if column_index in [self.CATEGORY_COLUMN, self.SUBCATEGORY_COLUMN, self.TAGS_COLUMN, self.GROUP_COLUMN]:
+            self._show_searchable_filter_menu(column_index)
+            return
+
+        # Default handling for operation type column - simple checkboxes
         unique_values = set()
         filtered_ops = self._filtered_operations_for_column(exclude_col=column_index)
 
         for operation in filtered_ops:
             if column_index == self.OPERATION_TYPE_COLUMN:
                 unique_values.add(operation.operation_type)
-            elif column_index == self.CATEGORY_COLUMN:
-                unique_values.add(operation.category)
-            elif column_index == self.SUBCATEGORY_COLUMN:
-                unique_values.add(operation.subcategory)
-            elif column_index == self.GROUP_COLUMN:
-                if operation.group_id:
-                    group_name = self.groups_dict.get(operation.group_id, operation.group_id)
-                    unique_values.add(group_name)
-                else:
-                    unique_values.add("N/A")
-            elif column_index == self.TAGS_COLUMN:
-                if operation.tags:
-                    unique_values.update(operation.tags)
 
         current_filters = self.active_filters.get(column_index, set())
 
@@ -241,6 +234,127 @@ class HeaderFilterMixin:
 
     def _clear_date_filter(self, menu, column_index):
         """Clear the date filter"""
+        self.active_filters.pop(column_index, None)
+        menu.close()
+        self._apply_active_filters()
+
+    def _show_searchable_filter_menu(self, column_index):
+        """Show a searchable multi-select filter menu for category, subcategory, tags, and groups columns"""
+        # Get unique values for the column
+        unique_values = set()
+        filtered_ops = self._filtered_operations_for_column(exclude_col=column_index)
+
+        for operation in filtered_ops:
+            if column_index == self.CATEGORY_COLUMN:
+                unique_values.add(operation.category)
+            elif column_index == self.SUBCATEGORY_COLUMN:
+                unique_values.add(operation.subcategory)
+            elif column_index == self.GROUP_COLUMN:
+                if operation.group_id:
+                    group_name = self.groups_dict.get(operation.group_id, operation.group_id)
+                    unique_values.add(group_name)
+                else:
+                    unique_values.add("N/A")
+            elif column_index == self.TAGS_COLUMN:
+                if operation.tags:
+                    unique_values.update(operation.tags)
+
+        current_filters = self.active_filters.get(column_index, set())
+        sorted_values = sorted(unique_values)
+
+        # Menu creation
+        menu = QtWidgets.QMenu(self.operation_table_widget)
+        menu.setFixedWidth(300)  # Set a reasonable width for the menu
+
+        # Main widget
+        main_widget = QtWidgets.QWidget()
+        main_layout = QtWidgets.QVBoxLayout()
+        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.setSpacing(5)
+
+        # Search input
+        search_label = QtWidgets.QLabel("Search:")
+        main_layout.addWidget(search_label)
+
+        search_input = QtWidgets.QLineEdit()
+        search_input.setPlaceholderText("Type to filter...")
+        main_layout.addWidget(search_input)
+
+        # Scroll area for checkboxes
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setMaximumHeight(200)  # Limit height to make it scrollable
+
+        # Widget to hold checkboxes
+        checkboxes_widget = QtWidgets.QWidget()
+        checkboxes_layout = QtWidgets.QVBoxLayout()
+        checkboxes_layout.setContentsMargins(2, 2, 2, 2)
+        checkboxes_layout.setSpacing(2)
+
+        # Store checkboxes and their values
+        checkboxes_dict = {}
+
+        # Create checkboxes for all values
+        for val in sorted_values:
+            checkbox = QtWidgets.QCheckBox(val)
+            checkbox.setChecked(val in current_filters)
+            checkboxes_layout.addWidget(checkbox)
+            checkboxes_dict[checkbox] = val
+
+        checkboxes_widget.setLayout(checkboxes_layout)
+        scroll_area.setWidget(checkboxes_widget)
+        main_layout.addWidget(scroll_area)
+
+        # Buttons
+        btn_apply = QtWidgets.QPushButton("✅ Apply")
+        btn_clear = QtWidgets.QPushButton("❌ Clear")
+
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addWidget(btn_apply)
+        button_layout.addWidget(btn_clear)
+        main_layout.addLayout(button_layout)
+
+        main_widget.setLayout(main_layout)
+
+        widget_action = QtWidgets.QWidgetAction(menu)
+        widget_action.setDefaultWidget(main_widget)
+        menu.addAction(widget_action)
+
+        # Filter checkboxes based on search input
+        def filter_checkboxes(search_text):
+            search_lower = search_text.lower()
+            for checkbox, value in checkboxes_dict.items():
+                if search_lower in value.lower():
+                    checkbox.setVisible(True)
+                else:
+                    checkbox.setVisible(False)
+
+        search_input.textChanged.connect(filter_checkboxes)
+
+        # Signals
+        btn_apply.clicked.connect(lambda: self._apply_searchable_filters(menu, column_index, checkboxes_dict))
+        btn_clear.clicked.connect(lambda: self._clear_searchable_filter(menu, column_index, checkboxes_dict))
+
+        # Focus on search input when menu is shown
+        menu.aboutToShow.connect(lambda: search_input.setFocus())
+
+        # Show menu
+        menu.exec_(QtGui.QCursor.pos())
+
+    def _apply_searchable_filters(self, menu, column_index, checkboxes_dict):
+        """Apply the searchable multi-select filters"""
+        selected = {val for cb, val in checkboxes_dict.items() if cb.isChecked() and cb.isVisible()}
+        if selected:
+            self.active_filters[column_index] = selected
+        else:
+            self.active_filters.pop(column_index, None)
+        menu.close()
+        self._apply_active_filters()
+
+    def _clear_searchable_filter(self, menu, column_index, checkboxes_dict):
+        """Clear the searchable filter and uncheck all checkboxes"""
+        for checkbox in checkboxes_dict.keys():
+            checkbox.setChecked(False)
         self.active_filters.pop(column_index, None)
         menu.close()
         self._apply_active_filters()
