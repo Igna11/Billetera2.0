@@ -22,7 +22,7 @@ from src.commands.groupcommands import CreateOperationGroupCommand
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
 from billeUI import UISPATH, operationscreen, groupbrowser, animatedlabel, currency_format
-from billeUI.operationbrowser import clean_tags
+from billeUI.utils import clean_tags
 
 
 class IncomeExpenseScreen(QMainWindow):

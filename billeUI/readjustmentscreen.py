@@ -18,7 +18,7 @@ from src.ophandlers.operationhandler import OperationHandler
 from src.queries.opqueries import GetUniqueCategoriesQuery, GetUniqueSubcategoriesQuery
 
 from billeUI import UISPATH, operationscreen, animatedlabel
-from billeUI.operationbrowser import clean_tags
+from billeUI.utils import clean_tags
 
 
 class ReadjustmentScreen(QMainWindow):

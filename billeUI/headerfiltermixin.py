@@ -4,8 +4,7 @@
 created on 23/07/2023 16:00 by chatgpt
 """
 
-from PyQt5 import QtWidgets, QtGui, QtCore
-from datetime import datetime
+from PyQt5 import QtWidgets, QtGui
 
 
 class HeaderFilterMixin:
@@ -168,7 +167,6 @@ class HeaderFilterMixin:
     def _show_date_filter_menu(self, column_index):
         """Show a date range picker menu for the date column"""
         # Import here to avoid circular imports
-        from billeUI.calendardialog import CalendarDialog
 
         current_filter = self.active_filters.get(column_index, None)
 

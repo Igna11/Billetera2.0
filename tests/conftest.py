@@ -239,3 +239,113 @@ def mock_operations(temp_data_dir, mock_user, mock_account):
                 op_db.delete_operation(op.operation_id)
         except Exception:
             pass
+
+
+@pytest.fixture
+def mock_operations_with_tags_and_groups(temp_data_dir, mock_user, mock_account, mock_group):
+    """
+    Create mock operations with tags and groups for testing filter functionality.
+    """
+    from src.models.opmodel import Operations
+    from src.dbhandlers.operationsdb import OperationsDB
+    from datetime import datetime
+
+    # Ensure the user directory exists
+    user_dir = os.path.join(temp_data_dir, "data", mock_user.user_id)
+    os.makedirs(user_dir, exist_ok=True)
+
+    op_db = OperationsDB(user_id=mock_user.user_id)
+
+    # Get group_id if mock_group exists, otherwise None
+    group_id = mock_group.group_id if mock_group else None
+
+    # Create test operations with tags and groups
+    test_operations = [
+        Operations(
+            user_id=mock_user.user_id,
+            account_id=mock_account.account_id,
+            operation_type="expense",
+            category="Food",
+            subcategory="Restaurant",
+            amount=Decimal("50.00"),
+            operation_datetime=datetime.now(),
+            tags=("dinner", "weekend"),
+            group_id=group_id,
+        ),
+        Operations(
+            user_id=mock_user.user_id,
+            account_id=mock_account.account_id,
+            operation_type="expense",
+            category="Transport",
+            subcategory="Uber",
+            amount=Decimal("25.00"),
+            operation_datetime=datetime.now(),
+            tags=("work",),
+            group_id=group_id,
+        ),
+        Operations(
+            user_id=mock_user.user_id,
+            account_id=mock_account.account_id,
+            operation_type="income",
+            category="Salary",
+            subcategory="Monthly",
+            amount=Decimal("2000.00"),
+            operation_datetime=datetime.now(),
+            tags=("monthly",),
+        ),
+    ]
+
+    created_ops = []
+    try:
+        for op in test_operations:
+            created_op = op_db.create_operation(op)
+            created_ops.append(created_op)
+        yield created_ops
+    except Exception as e:
+        print(f"Warning: Operations with tags and groups creation failed: {e}")
+        yield []
+    finally:
+        # Cleanup test operations
+        try:
+            for op in created_ops:
+                op_db.delete_operation(op.operation_id)
+        except Exception:
+            pass
+
+
+@pytest.fixture
+def mock_group(temp_data_dir, mock_user, mock_account):
+    """
+    Create a mock group for testing group-related functionality.
+    """
+    from src.models.groupmodel import OperationGroups
+    from src.dbhandlers.opgroupsdb import OpGroupsDB
+
+    # Ensure the user directory exists
+    user_dir = os.path.join(temp_data_dir, "data", mock_user.user_id)
+    os.makedirs(user_dir, exist_ok=True)
+
+    group_db = OpGroupsDB(user_id=mock_user.user_id)
+
+    # Create test group
+    test_group = OperationGroups(
+        user_id=mock_user.user_id,
+        group_name="TestGroup",
+        group_currency=mock_account.account_currency,
+        status="open",
+    )
+
+    created_group = None
+    try:
+        created_group = group_db.create_group(test_group)
+        yield created_group
+    except Exception as e:
+        print(f"Warning: Group creation failed: {e}")
+        yield None
+    finally:
+        # Cleanup test group
+        try:
+            if created_group and created_group.group_id:
+                group_db.delete_group(created_group.group_id)
+        except Exception:
+            pass

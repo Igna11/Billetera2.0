@@ -23,7 +23,7 @@ from src.ophandlers.transferhandler import (
 )
 
 from billeUI import UISPATH, operationscreen, animatedlabel
-from billeUI.operationbrowser import clean_tags
+from billeUI.utils import clean_tags
 
 
 class TransferScreen(QMainWindow):

@@ -29,36 +29,9 @@ from src.ophandlers.deletehandler import DeletionHandler
 from src.ophandlers.operationhandler import OperationHandler, NegativeAccountTotalError
 
 from billeUI import UISPATH, operationscreen, currency_format, animatedlabel, headerfiltermixin
+from billeUI.utils import clean_tags
 
 DATEFORMAT = "%A %d-%m-%Y %H:%M:%S"
-
-
-def clean_tags(tags: str) -> tuple | None:
-    """
-    Clean up tag string by removing empty segments and extra spaces.
-
-    Args:
-        tags: Raw tag string (e.g., "hi,,yes, , no")
-
-    Returns:
-        Cleaned tag tuple (e.g., ("hi", "yes", "no")) or None if empty
-
-    Examples:
-        "hi,,yes, , no" -> ("hi", "yes", "no")
-        "  tag1  ,  tag2  " -> ("tag1", "tag2")
-        "" -> None
-        "single" -> ("single",)
-    """
-    if not tags:
-        return None
-
-    # Split by comma and strip whitespace from each segment
-    segments = [tag.strip() for tag in tags.split(",")]
-
-    # Filter out empty segments
-    clean_segments = tuple([tag for tag in segments if tag])
-
-    return clean_segments if clean_segments else None
 
 
 class HeaderFilter(headerfiltermixin.HeaderFilterMixin):
