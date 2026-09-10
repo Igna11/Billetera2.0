@@ -377,21 +377,38 @@ class OperationBrowser(QMainWindow, headerfiltermixin.HeaderFilterMixin):
         self.operation_table_widget.setColumnCount(len(self.headers_list))
         self.operation_table_widget.setHorizontalHeaderLabels(self.headers_list)
 
-        # Set the delegate for the group column (column 7)
         self.operation_table_widget.setItemDelegateForColumn(7, self.group_delegate)
 
         self.total_label.setText("<b>Total: Empty</b>")
 
         filtered_operations_list = self.filter_operations(self.operations_list)
 
-        # Update the header filter mixin with the current operations list
         self.update_operations_list(self.operations_list)
 
         if self.operations_list and filtered_operations_list:
             pagination = 100
 
-            cumulative_amount = currency_format(self.operations_list[0].cumulative_amount)
-            self.total_label.setText(f"<b>Total: ${cumulative_amount}</b>")
+            is_single_account_no_filters = self.accounts_comboBox.currentText() != "All" and not (
+                hasattr(self, "active_filters") and self.active_filters
+            )
+
+            if is_single_account_no_filters:
+                total_amount = self.operations_list[0].cumulative_amount
+                label_text = "Total:"
+            else:
+                total_amount = 0
+                for op in filtered_operations_list:
+                    op_type = {"income": 1, "transfer_in": 1, "expense": -1, "transfer_out": -1}
+                    total_amount += op.amount * op_type.get(op.operation_type)
+
+                has_active_filters = hasattr(self, "active_filters") and self.active_filters
+                label_text = "Partial:" if has_active_filters else "Total:"
+
+            formatted_amount = currency_format(abs(total_amount))
+
+            color = "green" if total_amount >= 0 else "red"
+
+            self.total_label.setText(f"<b>{label_text} <font color='{color}'>${formatted_amount}</font></b>")
             if len(filtered_operations_list) > pagination:
                 pagination_left = self.pagination_index * pagination
                 pagination_right = (self.pagination_index + 1) * pagination
