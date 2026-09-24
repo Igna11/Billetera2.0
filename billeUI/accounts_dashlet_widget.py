@@ -8,7 +8,6 @@ from typing import List
 from decimal import Decimal
 
 from PyQt5.QtWidgets import QWidget, QDialog
-from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
 
 from src.models.accmodel import Accounts
