@@ -7,12 +7,14 @@ import os
 from typing import List
 from decimal import Decimal
 
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QDialog
+from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
 
 from src.models.accmodel import Accounts
 
 from billeUI import UISPATH, currency_format
+from billeUI.accountselectiondialog import AccountSelectionDialog
 
 
 class AccountDashletWidget(QWidget):
@@ -25,18 +27,41 @@ class AccountDashletWidget(QWidget):
         self.acc_list = acc_list
         self.account_name = None
         self.account_currency = None
+        # Initialize with all account IDs selected (default behavior)
+        self.selected_account_ids = {acc.account_id for acc in self.acc_list}
         # buttons
         self.acc_next_button.clicked.connect(self.next_acc)
         self.acc_prev_button.clicked.connect(self.prev_acc)
+        # Double-click event for acc_total_label to open account selection dialog
+        self.acc_total_label.mouseDoubleClickEvent = self.on_acc_total_label_double_click
         self.set_labels()
         self.total = self._calculate_total()
 
     def _calculate_total(self) -> Decimal:
         total = Decimal(0)
-        for account in self.acc_list:
+        # Calculate total based on selected accounts or all accounts
+        # If selected_account_ids is empty, it means "all accounts" (default behavior)
+        # If it has specific IDs, only sum those accounts
+        accounts_to_sum = self.acc_list
+        if self.selected_account_ids:
+            accounts_to_sum = [acc for acc in self.acc_list if acc.account_id in self.selected_account_ids]
+
+        for account in accounts_to_sum:
             if account.account_total:
                 total += Decimal(account.account_total)
         return total
+
+    def on_acc_total_label_double_click(self, event):
+        """Handle double-click on acc_total_label to open account selection dialog"""
+        if not self.acc_list:
+            return
+
+        dialog = AccountSelectionDialog(self.acc_list, self, self.selected_account_ids)
+        result = dialog.exec_()
+
+        if result == QDialog.Accepted:
+            self.selected_account_ids = dialog.selected_accounts
+            self.set_labels()
 
     def set_monthly_balance(self, balance: Decimal) -> None:
         if balance >= 0:
@@ -58,7 +83,15 @@ class AccountDashletWidget(QWidget):
             account_total = (
                 f"Total: <b>{currency_format(self.acc_list[self.acc_index].model_dump()['account_total'])}</b>"
             )
-            user_total = f"Total: <b>{currency_format(self._calculate_total())} ({self.account_currency})</b>"
+
+            # Calculate filtered total and add indication if filtered
+            calculated_total = self._calculate_total()
+            # Only show "selected" indicator if not all accounts are selected
+            if self.selected_account_ids and len(self.selected_account_ids) != len(self.acc_list):
+                user_total = f"Total: <b>{currency_format(calculated_total)} ({self.account_currency})</b> <i>({len(self.selected_account_ids)} selected)</i>"
+            else:
+                user_total = f"Total: <b>{currency_format(calculated_total)} ({self.account_currency})</b>"
+
             self.acc_label.setText(f"{self.account_name} ({self.account_currency})")
             self.total_label.setText(account_total)
             self.acc_total_label.setText(user_total)
@@ -81,5 +114,13 @@ class AccountDashletWidget(QWidget):
 
     def update_data(self, data: List[Accounts]) -> None:
         self.acc_list = data
+        # Update selected_account_ids to include new accounts and remove deleted ones
+        current_account_ids = {acc.account_id for acc in self.acc_list}
+        if self.selected_account_ids:
+            # Remove IDs of deleted accounts
+            self.selected_account_ids = self.selected_account_ids.intersection(current_account_ids)
+        else:
+            # If no selection, set to all accounts (default behavior)
+            self.selected_account_ids = current_account_ids
         self._calculate_total()
         self.set_labels()
